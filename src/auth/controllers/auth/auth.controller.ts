@@ -1,23 +1,59 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { Request } from 'express';
+import { HttpService } from '@nestjs/axios';
 import {
-  AuthenticatedLoginRequest,
-  ForgotPasswordDto,
-} from 'src/auth/dto/auth.dto';
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { AuthGuard } from '@nestjs/passport';
+import { Request, Response } from 'express';
+import { RegisterAccountDto } from 'src/accounts/dto/account.dto';
+import { AccountService } from 'src/accounts/services/account/account.service';
+import { AuthenticatedLoginRequest } from 'src/auth/dto/auth.dto';
 
-import { JwtAuthGuard } from 'src/auth/guards/jwt.auth.guard';
 import { LocalAuthGuard } from 'src/auth/guards/local.guard';
 import { AuthService } from 'src/auth/services/auth/auth.service';
+import { MailService } from 'src/mail/mail.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly httpService: HttpService,
+    private readonly mailService: MailService,
+    private readonly jwtService: JwtService,
+    private readonly accountService: AccountService,
+  ) {}
+
+  @Post('send-verify-code')
+  async verifyEmail(@Body() request: RegisterAccountDto) {
+    const hasExistingAccount = await this.accountService.findAccountByEmail(
+      request.email,
+    );
+
+    if (!hasExistingAccount) {
+      return this.mailService.sendVerificationEmail(request);
+    } else {
+      throw new HttpException('Error Account Exists', 500);
+    }
+  }
 
   @Post('login')
   @UseGuards(LocalAuthGuard)
-  async login(@Req() request: AuthenticatedLoginRequest) {
-    return request.user;
+  async login(@Req() request: AuthenticatedLoginRequest, @Res() res: Response) {
+    res.cookie('access_token', request.user.token, {
+      httpOnly: true, // ✅ Prevents JavaScript access (XSS protection)
+      secure: false, // ✅ Only send over HTTPS (set `false` for local dev)
+      // sameSite: 'strict', // ✅ Protects against CSRF attacks
+      maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
+    });
+    console.log('cookie created');
+    return res.json({ isloggedIn: true });
   }
 
   @Get('google')
@@ -28,15 +64,40 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req) {
-    return req.user; // This will contain the user info returned by Google
+  async googleAuthRedirect(@Req() req, @Res() res: any) {
+    res.cookie('access_token', req.user, {
+      httpOnly: true, // ✅ Prevents JavaScript access (XSS protection)
+      secure: false, // ✅ Only send over HTTPS (set `false` for local dev)
+      // sameSite: 'strict', // ✅ Protects against CSRF attacks
+      maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
+    });
+
+    return res.redirect(`http://localhost:4200`);
   }
 
-  // @Get('status')
-  // @UseGuards(JwtAuthGuard)
-  // status(@Req() req: Request) {
-  //   req.user;
-  // }
+  @Get('facebook')
+  @UseGuards(AuthGuard('facebook'))
+  async facebookAuth() {}
+
+  @Get('facebook/callback')
+  @UseGuards(AuthGuard('facebook'))
+  async facebookAuthRedirect(@Req() req, @Res() res: any) {
+    res.cookie('access_token', req.user, {
+      httpOnly: true, // ✅ Prevents JavaScript access (XSS protection)
+      secure: false, // ✅ Only send over HTTPS (set `false` for local dev)
+      // sameSite: 'strict', // ✅ Protects against CSRF attacks
+      maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
+    });
+
+    return res.redirect(`http://localhost:4200`);
+  }
+
+  @Get('status')
+  status(@Req() req: Request) {
+    const token = req.cookies['access_token'];
+
+    return this.authService.validateToken(token);
+  }
 
   // @Post('forgot-password')
   // async forgotPassword(@Body() request: ForgotPasswordDto) {

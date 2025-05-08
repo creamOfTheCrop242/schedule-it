@@ -1,8 +1,14 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import axios from 'axios';
 import * as bcrypt from 'bcrypt';
 import { AccountService } from 'src/accounts/services/account/account.service';
-import { AuthLoginRequestDto, ForgotUserNameDto } from 'src/auth/dto/auth.dto';
+import {
+  AuthLoginRequestDto,
+  AuthStatus,
+  ForgotUserNameDto,
+} from 'src/auth/dto/auth.dto';
+import { CONFIG_SECRETS } from 'src/config/config';
 
 @Injectable()
 export class AuthService {
@@ -22,17 +28,28 @@ export class AuthService {
     // });
   }
 
+  async validateToken(token: string) {
+    try {
+      this.jwtService.verify(token);
+      return { isLoggedIn: true };
+    } catch (error) {
+      console.error('Token verification failed:', error.message);
+      throw new HttpException('Invalid Token', 401);
+    }
+  }
+
+  async validateFacebookToken(facebookToken: string) {}
+
   async validateUser(request: AuthLoginRequestDto) {
     let account;
 
     account = await this.accountService.findAccountByEmail(request.email);
-    console.log('here');
 
     if (account) {
       const isMatch = await bcrypt.compare(request.password, account.password);
       if (isMatch) {
         const token = this.jwtService.sign({
-          username: account.username,
+          email: account.email,
           id: account.id,
         });
         return { token };
