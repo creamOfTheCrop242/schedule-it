@@ -14,3 +14,9 @@ export class ForgotPasswordDto {
 export interface AuthenticatedLoginRequest extends Request {
   user: any;
 }
+
+export interface AuthStatus {
+  isLoggedIn: boolean;
+  method?: 'local' | 'facebook' | 'google';
+  error?: any;
+}

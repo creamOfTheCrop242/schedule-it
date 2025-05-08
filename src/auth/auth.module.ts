@@ -8,17 +8,31 @@ import { AuthService } from './services/auth/auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { HttpModule } from '@nestjs/axios';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { EmailVerification } from './entities/email-verification.entity';
+import { MailService } from 'src/mail/mail.service';
+import { FacebookStrategy } from './strategies/facebook.strategy';
 
 @Module({
   imports: [
     PassportModule,
+    TypeOrmModule.forFeature([EmailVerification]),
     JwtModule.register({
       secret: jwtConstants.secret,
-      signOptions: { expiresIn: '8hr' },
+      signOptions: { expiresIn: '30m' },
     }),
     AccountModule,
+    HttpModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, GoogleStrategy],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    GoogleStrategy,
+    FacebookStrategy,
+    MailService,
+  ],
 })
 export class AuthModule {}

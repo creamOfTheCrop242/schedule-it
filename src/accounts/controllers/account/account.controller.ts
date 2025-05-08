@@ -14,13 +14,14 @@ import {
   RegisterAccountDto,
   UpdateAccountDto,
   UpdatePasswordDto,
+  VerifyEmailDto,
 } from '../../dto/account.dto';
 
 @Controller('account')
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
   @Post('register')
-  createAccount(@Body() request: RegisterAccountDto) {
+  createAccount(@Body() request: VerifyEmailDto) {
     return this.accountService.createAccount(request);
   }
 
