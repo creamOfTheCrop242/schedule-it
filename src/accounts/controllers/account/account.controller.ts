@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { AccountService } from 'src/accounts/services/account/account.service';
@@ -16,14 +17,11 @@ import {
   UpdatePasswordDto,
   VerifyEmailDto,
 } from '../../dto/account.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Controller('account')
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
-  @Post('register')
-  createAccount(@Body() request: VerifyEmailDto) {
-    return this.accountService.createAccount(request);
-  }
 
   @Get('accounts')
   @UseGuards(JwtAuthGuard)
