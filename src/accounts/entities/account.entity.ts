@@ -1,3 +1,4 @@
+import { Task } from 'src/tasks/entities/task.entity';
 import {
   Column,
   CreateDateColumn,
@@ -36,11 +37,11 @@ export class Account {
   @DeleteDateColumn()
   deletedAt?: Date;
 
-  // @OneToMany(() => Task, (task) => task.account)
-  // tasks: Task[];
+  @OneToMany(() => Task, (task) => task.account)
+  tasks: Task[];
 
   // @OneToMany(() => List, (list) => list.account)
-  // lists: List[];
+  // lists: List[];xs
 
   // @OneToMany(() => Reminder, (reminder) => reminder.account)
   // reminders: Reminder[];

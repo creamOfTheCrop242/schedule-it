@@ -12,7 +12,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard } from '@nestjs/passport';
 import { Request, Response } from 'express';
-import { RegisterAccountDto } from 'src/accounts/dto/account.dto';
+import {
+  RegisterAccountDto,
+  VerifyEmailDto,
+} from 'src/accounts/dto/account.dto';
 import { AccountService } from 'src/accounts/services/account/account.service';
 import { AuthenticatedLoginRequest } from 'src/auth/dto/auth.dto';
 
@@ -29,6 +32,27 @@ export class AuthController {
     private readonly jwtService: JwtService,
     private readonly accountService: AccountService,
   ) {}
+
+  @Post('register')
+  async createAccount(@Body() request: VerifyEmailDto, req, @Res() res: any) {
+    const newAccount = await this.accountService.createAccount(request);
+
+    if (newAccount) {
+      const token = await this.jwtService.sign({
+        email: newAccount.email,
+        id: newAccount.id,
+      });
+
+      res.cookie('access_token', token, {
+        httpOnly: true, // ✅ Prevents JavaScript access (XSS protection)
+        secure: false, // ✅ Only send over HTTPS (set `false` for local dev)
+        // sameSite: 'strict', // ✅ Protects against CSRF attacks
+        maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
+      });
+    }
+
+    return res.json(newAccount);
+  }
 
   @Post('send-verify-code')
   async verifyEmail(@Body() request: RegisterAccountDto) {
