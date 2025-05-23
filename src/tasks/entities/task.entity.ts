@@ -1,4 +1,5 @@
 import { Account } from 'src/accounts/entities/account.entity';
+import { Note } from 'src/notes/entities/note.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -6,6 +7,7 @@ import {
   ManyToOne,
   CreateDateColumn,
   DeleteDateColumn,
+  OneToMany,
 } from 'typeorm';
 
 @Entity()
@@ -45,6 +47,9 @@ export class Task {
 
   //   @ManyToOne(() => List, { nullable: true })
   //   list: List; // A task can now be linked to a list.
+
+  @OneToMany(() => Note, (note) => note.task)
+  notes: Note;
 
   @ManyToOne(() => Account, (account) => account.tasks)
   account: Account;

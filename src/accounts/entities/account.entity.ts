@@ -1,3 +1,4 @@
+import { Note } from 'src/notes/entities/note.entity';
 import { Task } from 'src/tasks/entities/task.entity';
 import {
   Column,
@@ -39,6 +40,9 @@ export class Account {
 
   @OneToMany(() => Task, (task) => task.account)
   tasks: Task[];
+
+  @OneToMany(() => Note, (note) => note.task)
+  notes: Note;
 
   // @OneToMany(() => List, (list) => list.account)
   // lists: List[];xs
