@@ -8,7 +8,6 @@ import {
   AuthStatus,
   ForgotUserNameDto,
 } from 'src/auth/dto/auth.dto';
-import { CONFIG_SECRETS } from 'src/config/config';
 
 @Injectable()
 export class AuthService {

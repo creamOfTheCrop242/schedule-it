@@ -1,19 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-facebook';
 import { AccountService } from 'src/accounts/services/account/account.service';
-import { CONFIG_SECRETS } from 'src/config/config';
 
 @Injectable()
 export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   constructor(
     private readonly accountService: AccountService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {
     super({
-      clientID: CONFIG_SECRETS.FACEBOOK_APP_ID, // Use environment variables for security
-      clientSecret: CONFIG_SECRETS.FACEBOOK_APP_SECRET,
+      clientID: configService.get<string>('FACEBOOK_APP_ID'),
+      clientSecret: configService.get<string>('FACEBOOK_APP_SECRET'),
       callbackURL: 'http://localhost:3000/auth/facebook/callback',
       scope: ['email'],
       profileFields: ['id', 'emails', 'name', 'photos'],

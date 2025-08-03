@@ -4,20 +4,12 @@ import {
   Delete,
   Get,
   Param,
-  Post,
   Put,
-  Res,
   UseGuards,
 } from '@nestjs/common';
 import { AccountService } from 'src/accounts/services/account/account.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.auth.guard';
-import {
-  RegisterAccountDto,
-  UpdateAccountDto,
-  UpdatePasswordDto,
-  VerifyEmailDto,
-} from '../../dto/account.dto';
-import { JwtService } from '@nestjs/jwt';
+import { UpdateAccountDto, UpdatePasswordDto } from '../../dto/account.dto';
 
 @Controller('account')
 export class AccountController {
