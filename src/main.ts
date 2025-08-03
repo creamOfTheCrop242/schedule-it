@@ -6,7 +6,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser()); // ✅ Enables NestJS to parse cookie
   app.enableCors({
-    origin: ['http://localhost:4200'], // Specify the origin you want to allow (Angular app)
+    origin: ['http://localhost:4200', 'https://schedule-it-2.netlify.app/'], // Specify the origin you want to allow (Angular app)
     methods: 'GET,POST,PUT,DELETE, PATCH', // Specify allowed HTTP methods
     allowedHeaders: 'Content-Type,Authorization', // Specify allowed headers
     credentials: true,
