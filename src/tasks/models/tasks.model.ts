@@ -21,7 +21,6 @@ export class CreateTaskDto {
   startDate?: Date;
   dueDate?: Date;
   dependencyTaskId?: string;
-  accountId: string;
 }
 
 export class UpdateTaskDto {

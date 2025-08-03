@@ -9,6 +9,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard } from '@nestjs/passport';
 import { Request, Response } from 'express';
@@ -31,6 +32,7 @@ export class AuthController {
     private readonly mailService: MailService,
     private readonly jwtService: JwtService,
     private readonly accountService: AccountService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('register')
@@ -96,7 +98,7 @@ export class AuthController {
       maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
     });
 
-    return res.redirect(`http://localhost:4200`);
+    return res.redirect(`${this.configService.get<string>('FRONTEND_URL')}`);
   }
 
   @Get('facebook')
@@ -113,7 +115,7 @@ export class AuthController {
       maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
     });
 
-    return res.redirect(`http://localhost:4200`);
+    return res.redirect(`${this.configService.get<string>('FRONTEND_URL')}`);
   }
 
   @Get('status')

@@ -1,11 +1,11 @@
 import { HttpException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as nodemailer from 'nodemailer';
 import { RegisterAccountDto } from 'src/accounts/dto/account.dto';
 import { EmailVerification } from 'src/auth/entities/email-verification.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { CONFIG_SECRETS } from 'src/config/config';
 
 @Injectable()
 export class MailService {
@@ -14,6 +14,7 @@ export class MailService {
   constructor(
     @InjectRepository(EmailVerification)
     private emailVerificationRepository: Repository<EmailVerification>,
+    private readonly configService: ConfigService,
   ) {
     this.transporter = nodemailer.createTransport({
       host: 'smtp.elasticemail.com', // Replace with your SMTP server
@@ -21,7 +22,7 @@ export class MailService {
       secure: false, // Use true for 465, false for other ports
       auth: {
         user: 'dhudson0242@gmail.com', // Your email address
-        pass: CONFIG_SECRETS.ELASTIC_MAIL_PASSWORD, // Your email password or app password
+        pass: configService.get<string>('ELASTIC_MAIL_PASSWORD'), // Your email password or app password
       },
     });
   }

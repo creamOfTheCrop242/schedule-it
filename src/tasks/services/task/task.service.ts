@@ -6,18 +6,19 @@ import { Account } from 'src/accounts/entities/account.entity';
 import { Task } from 'src/tasks/entities/task.entity';
 import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
 import { AccountService } from 'src/accounts/services/account/account.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class TaskService {
   constructor(
     @InjectRepository(Task)
     private readonly taskRepository: Repository<Task>,
-
+    private readonly jwtService: JwtService,
     private readonly accountService: AccountService,
   ) {}
 
-  async create(createTaskDto: CreateTaskDto): Promise<Task> {
-    const { accountId, dependencyTaskId, ...rest } = createTaskDto;
+  async create(createTaskDto: CreateTaskDto, accountId: string): Promise<Task> {
+    const { dependencyTaskId, ...rest } = createTaskDto;
 
     const account = await this.accountService.findAccountById(accountId);
     if (!account) {
@@ -42,7 +43,7 @@ export class TaskService {
 
   findAll(): Promise<Task[]> {
     return this.taskRepository.find({
-      relations: ['account', 'dependencyTask', 'notes'],
+      relations: ['dependencyTask', 'notes'],
     });
   }
 
@@ -57,7 +58,7 @@ export class TaskService {
     return task;
   }
 
-  async update(id: string, updateTaskDto: UpdateTaskDto): Promise<Task> {
+  async update(updateTaskDto: UpdateTaskDto, id: string): Promise<Task> {
     const task = await this.taskRepository.preload({
       id,
       ...updateTaskDto,

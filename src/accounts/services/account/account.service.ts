@@ -49,7 +49,6 @@ export class AccountService {
   ) {
     const providerIdKey = provider === 'google' ? 'googleId' : 'facebookId';
     const { email, name, photo } = request;
-
     const existingAccount = await this.accountRepository.findOne({
       where: { email },
     });

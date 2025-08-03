@@ -7,7 +7,7 @@ async function bootstrap() {
   app.use(cookieParser()); // ✅ Enables NestJS to parse cookie
   app.enableCors({
     origin: ['http://localhost:4200'], // Specify the origin you want to allow (Angular app)
-    methods: 'GET,POST,PUT,DELETE', // Specify allowed HTTP methods
+    methods: 'GET,POST,PUT,DELETE, PATCH', // Specify allowed HTTP methods
     allowedHeaders: 'Content-Type,Authorization', // Specify allowed headers
     credentials: true,
   });
