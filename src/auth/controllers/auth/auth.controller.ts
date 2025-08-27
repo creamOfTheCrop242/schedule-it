@@ -92,10 +92,11 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req, @Res() res: any) {
     res.cookie('access_token', req.user, {
-      httpOnly: true, // ✅ Prevents JavaScript access (XSS protection)
-      secure: false, // ✅ Only send over HTTPS (set `false` for local dev)
-      // sameSite: 'strict', // ✅ Protects against CSRF attacks
-      maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
+      httpOnly: true,
+      secure: true, // REQUIRED for cross-site
+      sameSite: 'none', // REQUIRED for cross-site
+      maxAge: 60 * 60 * 1000,
+      path: '/', // good practice
     });
 
     return res.redirect(`${this.configService.get<string>('FRONTEND_URL')}`);
