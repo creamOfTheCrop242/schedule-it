@@ -44,6 +44,7 @@ export class TaskService {
   findAll(): Promise<Task[]> {
     return this.taskRepository.find({
       relations: ['dependencyTask', 'notes'],
+      withDeleted: false,
     });
   }
 
@@ -51,6 +52,7 @@ export class TaskService {
     const task = await this.taskRepository.findOne({
       where: { id },
       relations: ['account', 'dependencyTask', 'notes'],
+      withDeleted: false,
     });
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
@@ -70,7 +72,7 @@ export class TaskService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.taskRepository.delete(id);
+    const result = await this.taskRepository.softDelete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
