@@ -8,6 +8,15 @@ async function bootstrap() {
   app.set('trust proxy', 1);
 
   app.use(cookieParser()); // ✅ Enables NestJS to parse cookie
+  app.use((req, _res, next) => {
+    console.log(
+      'x-forwarded-proto:',
+      req.headers['x-forwarded-proto'],
+      'req.secure:',
+      req.secure,
+    );
+    next();
+  });
 
   // CORS configuration
   const corsOptions = {
