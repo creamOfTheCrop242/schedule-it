@@ -103,7 +103,7 @@ export class AuthController {
       `${this.configService.get<string>('FRONTEND_URL')}`,
     );
 
-    console.log(response);
+    console.log('Set-Cookie about to send:', res.getHeader('Set-Cookie'));
 
     return response;
   }
