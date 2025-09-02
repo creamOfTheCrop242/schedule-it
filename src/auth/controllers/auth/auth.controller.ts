@@ -99,7 +99,13 @@ export class AuthController {
       path: '/', // good practice
     });
 
-    return res.redirect(`${this.configService.get<string>('FRONTEND_URL')}`);
+    const response = res.redirect(
+      `${this.configService.get<string>('FRONTEND_URL')}`,
+    );
+
+    console.log(response);
+
+    return response;
   }
 
   @Get('facebook')
