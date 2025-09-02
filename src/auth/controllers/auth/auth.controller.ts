@@ -90,22 +90,36 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req, @Res() res: any) {
-    res.cookie('access_token', req.user, {
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const token = req.user as string; // you said req.user is the token
+
+    // Set the cookie on the callback response
+    res.cookie('access_token', token, {
       httpOnly: true,
-      secure: true, // REQUIRED for cross-site
-      sameSite: 'none', // REQUIRED for cross-site
+      secure: true, // required with SameSite=None
+      sameSite: 'none', // not "none Secure"
+      path: '/',
       maxAge: 60 * 60 * 1000,
-      path: '/', // good practice
     });
 
-    const response = res.redirect(
-      `${this.configService.get<string>('FRONTEND_URL')}`,
-    );
-
+    // (Optional) log to confirm header is present
     console.log('Set-Cookie about to send:', res.getHeader('Set-Cookie'));
 
-    return response;
+    const frontend = this.configService.get<string>('FRONTEND_URL')!;
+
+    // Send 200 + client redirect (meta + JS). This avoids any proxies dropping headers on 302.
+    return res
+      .status(200)
+      .type('html')
+      .send(
+        `<html><head>
+           <meta http-equiv="refresh" content="0; url='${frontend}'" />
+         </head>
+         <body>
+           Redirecting…
+           <script>location.replace(${JSON.stringify(frontend)});</script>
+         </body></html>`,
+      );
   }
 
   @Get('facebook')
