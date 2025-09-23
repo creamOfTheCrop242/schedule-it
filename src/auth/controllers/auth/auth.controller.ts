@@ -106,6 +106,7 @@ export class AuthController {
     console.log('Set-Cookie about to send:', res.getHeader('Set-Cookie'));
 
     const frontend = this.configService.get<string>('FRONTEND_URL')!;
+    console.log('being redirected to', frontend);
 
     // Send 200 + client redirect (meta + JS). This avoids any proxies dropping headers on 302.
     return res
