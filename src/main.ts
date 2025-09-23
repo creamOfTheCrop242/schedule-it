@@ -20,7 +20,7 @@ async function bootstrap() {
 
   // CORS configuration
   const corsOptions = {
-    origin: ['http://localhost:4200', 'https://www.theguidelog.com'],
+    origin: ['http://localhost:4200', 'https://theguidelog.com'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
