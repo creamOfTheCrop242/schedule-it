@@ -100,6 +100,7 @@ export class AuthController {
       sameSite: 'none', // not "none Secure"
       path: '/',
       maxAge: 60 * 60 * 1000,
+      domain: '.theguidelog.com',
     });
 
     // (Optional) log to confirm header is present
