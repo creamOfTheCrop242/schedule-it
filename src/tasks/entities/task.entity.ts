@@ -5,58 +5,65 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
-  CreateDateColumn,
-  DeleteDateColumn,
   OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+  JoinColumn,
 } from 'typeorm';
 
-@Entity()
+export type TaskPriority = 'Low' | 'Medium' | 'High';
+
+@Entity('task') // keep table name stable
 export class Task {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'text', nullable: true })
   name: string;
 
-  @Column({ nullable: true })
-  description: string;
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
 
-  @Column({ type: 'enum', enum: ['Low', 'Medium', 'High'], default: 'Medium' })
-  priority: string;
+  @Column({
+    type: 'enum',
+    enum: ['Low', 'Medium', 'High'],
+    enumName: 'task_priority_enum', // prevents enum churn on deploys
+    default: 'Medium',
+  })
+  priority: TaskPriority;
 
-  @Column({ type: 'timestamp', nullable: true })
-  startDate: Date;
+  // ---- timestamps (with zone!) ----
+  @Column({ type: 'timestamptz', nullable: true })
+  startDate: Date | null;
 
-  @Column({ type: 'timestamp', nullable: true })
-  dueDate: Date;
+  @Column({ type: 'timestamptz', nullable: true })
+  dueDate: Date | null;
 
   @Column({ default: false })
   completed: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
-  completedDate: Date;
+  @Column({ type: 'timestamptz', nullable: true })
+  completedDate: Date | null;
 
-  @ManyToOne(() => Task, { nullable: true })
-  dependencyTask: Task;
-
-  //   @ManyToOne(() => Workout, { nullable: true })
-  //   workout: Workout;
-
-  //   @ManyToOne(() => Reminder, { nullable: true })
-  //   reminder: Reminder;
-
-  //   @ManyToOne(() => List, { nullable: true })
-  //   list: List; // A task can now be linked to a list.
+  // self-reference (optional: cascade delete to null)
+  @ManyToOne(() => Task, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'dependencyTaskId' })
+  dependencyTask: Task | null;
 
   @OneToMany(() => Note, (note) => note.task)
-  notes: Note;
+  notes: Note[]; // was Note
 
-  @ManyToOne(() => Account, (account) => account.tasks)
+  @ManyToOne(() => Account, (account) => account.tasks, { nullable: false })
+  @JoinColumn({ name: 'accountId' })
   account: Account;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz', default: () => 'NOW()' })
   createdAt: Date;
 
-  @DeleteDateColumn()
-  deletedAt: Date;
+  @UpdateDateColumn({ type: 'timestamptz', default: () => 'NOW()' })
+  updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

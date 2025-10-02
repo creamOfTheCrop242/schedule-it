@@ -11,7 +11,11 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.auth.guard';
-import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
+import {
+  CreateTaskDto,
+  GetTasksRequest,
+  UpdateTaskDto,
+} from 'src/tasks/models/tasks.model';
 import { TaskService } from 'src/tasks/services/task/task.service';
 
 @Controller('tasks')
@@ -27,10 +31,16 @@ export class TaskController {
     return this.taskService.create(createTaskDto, req.user.id);
   }
 
-  @Get()
+  @Post('find-tasks')
+  // @UseGuards(JwtAuthGuard)
+  findAll(@Body() request: GetTasksRequest) {
+    return this.taskService.findAll(request);
+  }
+
+  @Get('counts')
   @UseGuards(JwtAuthGuard)
-  findAll() {
-    return this.taskService.findAll();
+  getTaskCounts(@Req() req: any) {
+    return this.taskService.getTaskCounts(req.user.id);
   }
 
   @Get(':id')
