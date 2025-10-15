@@ -33,8 +33,3 @@ export class UpdateTaskDto {
   completedDate?: Date;
   dependencyTaskId?: string;
 }
-
-export class GetTasksRequest {
-  timeframe?: 'day' | 'week' | 'month' | 'year';
-  status?: 'complete' | 'incomplete';
-}

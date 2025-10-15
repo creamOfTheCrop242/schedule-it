@@ -1,15 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { JwtService } from '@nestjs/jwt';
+import { addDays } from 'date-fns';
+import { toDate } from 'date-fns-tz';
 import { AccountService } from 'src/accounts/services/account/account.service';
 import { Task } from 'src/tasks/entities/task.entity';
-import {
-  CreateTaskDto,
-  GetTasksRequest,
-  UpdateTaskDto,
-} from 'src/tasks/models/tasks.model';
+import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
 
 @Injectable()
 export class TaskService {
@@ -41,103 +43,89 @@ export class TaskService {
       dependencyTask,
     });
 
-    console.log(task);
-
     return this.taskRepository.save(task);
   }
 
-  async findAll(request: GetTasksRequest = {}): Promise<Task[]> {
-    const { timeframe, status } = request;
+  /** Convert a local date string ("YYYY-MM-DD") into a UTC start/end range */
+  private getUtcRangeFromLocalDate(
+    localDateStr: string,
+    timezone: string,
+  ): {
+    startUtc: Date;
+    endUtc: Date;
+  } {
+    const [year, month, day] = localDateStr.split('-').map(Number);
+    // midnight in local time
+    const startLocal = new Date(year, month - 1, day, 0, 0, 0, 0);
+    // Convert to UTC using the specified timezone
+    const startUtc = toDate(startLocal, { timeZone: timezone });
+    const endUtc = addDays(startUtc, 1);
+    return { startUtc, endUtc };
+  }
+
+  async findAll(
+    request: {
+      completedDate?: string;
+      status?: string;
+      token?: string;
+      timeZone?: string;
+    } = {},
+  ): Promise<Task[]> {
+    const { completedDate, status, token, timeZone } = request;
+
+    console.log('timeZone', timeZone);
+
+    if (!token) {
+      throw new UnauthorizedException('Token is required');
+    }
+    const accountId = this.extractAccountIdFromToken(token);
 
     const queryBuilder = this.taskRepository
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.dependencyTask', 'dependencyTask')
       .leftJoinAndSelect('task.notes', 'notes')
-      .where('task.deletedAt IS NULL');
+      .where('task.deletedAt IS NULL')
+      .andWhere('task.accountId = :accountId', { accountId });
 
-    // Apply status filter
-    if (status === 'complete') {
-      queryBuilder.andWhere('task.completed = :completed', { completed: true });
-    } else if (status === 'incomplete') {
-      queryBuilder.andWhere('task.completed = :completed', {
-        completed: false,
-      });
-    }
-    const tasks = await queryBuilder.getMany();
-    console.log(tasks);
+    if (status === 'true') {
+      queryBuilder.andWhere('task.completed = true');
 
-    // Apply timeframe filter
-    if (timeframe) {
-      const now = new Date();
-      let startDate: Date;
-      let endDate: Date = now; // End date is always the present datetime
-
-      switch (timeframe) {
-        case 'day':
-          startDate = new Date(
-            Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-          );
-          queryBuilder.andWhere(
-            'task.createdAt >= :startDate AND task.createdAt <= :endDate',
-            {
-              startDate,
-              endDate,
-            },
-          );
-          console.log(startDate);
-          console.log(endDate);
-          // console.log(await queryBuilder.getMany()[0]);
-          break;
-
-        case 'week':
-          // Get the start of the week (Monday)
-          const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-          const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday (0), go back 6 days to Monday
-          const startOfWeek = new Date(now);
-          startOfWeek.setDate(now.getDate() + daysToMonday);
-          startOfWeek.setHours(0, 0, 0, 0);
-          startDate = startOfWeek;
-
-          queryBuilder.andWhere(
-            'task.dueDate >= :startDate AND task.dueDate <= :endDate',
-            {
-              startDate,
-              endDate,
-            },
-          );
-          break;
-
-        case 'month':
-          // Start of current month
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          queryBuilder.andWhere(
-            'task.dueDate >= :startDate AND task.dueDate <= :endDate',
-            {
-              startDate,
-              endDate,
-            },
-          );
-          break;
-
-        case 'year':
-          // Start of current year
-          startDate = new Date(now.getFullYear(), 0, 1);
-          queryBuilder.andWhere(
-            'task.dueDate >= :startDate AND task.dueDate <= :endDate',
-            {
-              startDate,
-              endDate,
-            },
-          );
-          break;
-
-        default:
-          // No timeframe filter applied
-          break;
+      if (completedDate && timeZone) {
+        // Use helper to get UTC interval
+        const { startUtc, endUtc } = this.getUtcRangeFromLocalDate(
+          completedDate,
+          timeZone,
+        );
+        console.log(
+          'Filtering between UTC:',
+          startUtc.toISOString(),
+          'and',
+          endUtc.toISOString(),
+        );
+        queryBuilder.andWhere(
+          'task.completedDate >= :startUtc AND task.completedDate < :endUtc',
+          { startUtc, endUtc },
+        );
+      } else {
+        queryBuilder.orderBy('task.completedDate', 'DESC').limit(10);
       }
+    } else if (status === 'false') {
+      queryBuilder
+        .andWhere('task.completed = false')
+        .orderBy('task.createdAt', 'DESC');
     }
 
     return queryBuilder.getMany();
+  }
+
+  private extractAccountIdFromToken(token: string): string {
+    try {
+      const payload = this.jwtService.decode(token);
+
+      return payload.id;
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
   }
 
   async findOne(id: string): Promise<Task> {
@@ -157,6 +145,9 @@ export class TaskService {
       id,
       ...updateTaskDto,
     });
+
+    task.completedDate = task.completedDate ? null : new Date();
+    console.log('task.completedDate', task.completedDate);
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }

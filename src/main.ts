@@ -9,12 +9,6 @@ async function bootstrap() {
 
   app.use(cookieParser()); // ✅ Enables NestJS to parse cookie
   app.use((req, _res, next) => {
-    console.log(
-      'x-forwarded-proto:',
-      req.headers['x-forwarded-proto'],
-      'req.secure:',
-      req.secure,
-    );
     next();
   });
 
@@ -28,9 +22,6 @@ async function bootstrap() {
   };
 
   app.enableCors(corsOptions);
-
-  console.log('CORS enabled for origins:', corsOptions.origin);
-  console.log('Server starting on port:', process.env.PORT ?? 3000);
 
   await app.listen(process.env.PORT ?? 3000);
 }

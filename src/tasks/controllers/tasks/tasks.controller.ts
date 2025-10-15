@@ -1,21 +1,19 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
+  Controller,
+  Delete,
+  Get,
   Param,
   Patch,
-  Delete,
-  UseGuards,
+  Post,
+  Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.auth.guard';
-import {
-  CreateTaskDto,
-  GetTasksRequest,
-  UpdateTaskDto,
-} from 'src/tasks/models/tasks.model';
+import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
 import { TaskService } from 'src/tasks/services/task/task.service';
 
 @Controller('tasks')
@@ -31,10 +29,20 @@ export class TaskController {
     return this.taskService.create(createTaskDto, req.user.id);
   }
 
-  @Post('find-tasks')
+  @Get()
   // @UseGuards(JwtAuthGuard)
-  findAll(@Body() request: GetTasksRequest) {
-    return this.taskService.findAll(request);
+  findAll(
+    @Req() req: Request,
+    @Query('completedDate') completedDate?: string,
+    @Query('status') status?: string,
+    @Query('timeZone') timeZone?: string,
+  ) {
+    return this.taskService.findAll({
+      completedDate,
+      status,
+      token: req.cookies['access_token'],
+      timeZone,
+    });
   }
 
   @Get('counts')
