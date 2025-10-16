@@ -8,7 +8,7 @@ import { Repository } from 'typeorm';
 
 import { JwtService } from '@nestjs/jwt';
 import { addDays } from 'date-fns';
-import { toDate } from 'date-fns-tz';
+import { fromZonedTime } from 'date-fns-tz';
 import { AccountService } from 'src/accounts/services/account/account.service';
 import { Task } from 'src/tasks/entities/task.entity';
 import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
@@ -60,7 +60,7 @@ export class TaskService {
     console.log('Helper - startLocal:', startLocal.toISOString());
     console.log('Helper - timezone:', timezone);
     // Convert to UTC using the specified timezone
-    const startUtc = toDate(startLocal, { timeZone: timezone });
+    const startUtc = fromZonedTime(startLocal, timezone);
     console.log('Helper - startUtc:', startUtc.toISOString());
     const endUtc = addDays(startUtc, 1);
     console.log('Helper - endUtc:', endUtc.toISOString());
