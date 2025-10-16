@@ -57,9 +57,13 @@ export class TaskService {
     const [year, month, day] = localDateStr.split('-').map(Number);
     // midnight in local time
     const startLocal = new Date(year, month - 1, day, 0, 0, 0, 0);
+    console.log('Helper - startLocal:', startLocal.toISOString());
+    console.log('Helper - timezone:', timezone);
     // Convert to UTC using the specified timezone
     const startUtc = toDate(startLocal, { timeZone: timezone });
+    console.log('Helper - startUtc:', startUtc.toISOString());
     const endUtc = addDays(startUtc, 1);
+    console.log('Helper - endUtc:', endUtc.toISOString());
     return { startUtc, endUtc };
   }
 
@@ -96,12 +100,17 @@ export class TaskService {
           completedDate,
           timeZone,
         );
+        console.log('=== DATE FILTERING DEBUG ===');
+        console.log('Input completedDate:', completedDate);
+        console.log('Input timeZone:', timeZone);
+        console.log('Server timezone offset:', new Date().getTimezoneOffset());
         console.log(
           'Filtering between UTC:',
           startUtc.toISOString(),
           'and',
           endUtc.toISOString(),
         );
+        console.log('================================');
         queryBuilder.andWhere(
           'task.completedDate >= :startUtc AND task.completedDate < :endUtc',
           { startUtc, endUtc },
