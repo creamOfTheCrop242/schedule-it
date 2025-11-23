@@ -12,6 +12,8 @@ import { fromZonedTime } from 'date-fns-tz';
 import { AccountService } from 'src/accounts/services/account/account.service';
 import { Task } from 'src/tasks/entities/task.entity';
 import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
+import { GoalsService } from 'src/goals/services/goals.service';
+import { GoalMetric } from 'src/goals/goals.model';
 
 @Injectable()
 export class TaskService {
@@ -20,6 +22,7 @@ export class TaskService {
     private readonly taskRepository: Repository<Task>,
     private readonly jwtService: JwtService,
     private readonly accountService: AccountService,
+    private readonly goalsService: GoalsService,
   ) {}
 
   async create(createTaskDto: CreateTaskDto, accountId: string): Promise<Task> {
@@ -55,12 +58,21 @@ export class TaskService {
     endUtc: Date;
   } {
     const [year, month, day] = localDateStr.split('-').map(Number);
-    // midnight in local time
-    const startLocal = new Date(year, month - 1, day, 0, 0, 0, 0);
-    console.log('Helper - startLocal:', startLocal.toISOString());
+    // Create a date representing midnight using the date components
+    // fromZonedTime will interpret this date's local time components (year, month, day, hour)
+    // as if they represent local time in the specified timezone, then convert to UTC.
+    // This correctly handles DST transitions because fromZonedTime uses the timezone database.
+    const naiveDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    console.log('Helper - naiveDate (components):', {
+      year,
+      month: month - 1,
+      day,
+      iso: naiveDate.toISOString(),
+    });
     console.log('Helper - timezone:', timezone);
-    // Convert to UTC using the specified timezone
-    const startUtc = fromZonedTime(startLocal, timezone);
+    // fromZonedTime treats the date as if it represents local time in the target timezone
+    // and returns the UTC equivalent. This handles DST correctly.
+    const startUtc = fromZonedTime(naiveDate, timezone);
     console.log('Helper - startUtc:', startUtc.toISOString());
     const endUtc = addDays(startUtc, 1);
     console.log('Helper - endUtc:', endUtc.toISOString());
@@ -155,11 +167,55 @@ export class TaskService {
       ...updateTaskDto,
     });
 
-    task.completedDate = task.completedDate ? null : new Date();
-    console.log('task.completedDate', task.completedDate);
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
+
+    // Handle dependencyTask if dependencyTaskId is provided
+    if (updateTaskDto.dependencyTaskId !== undefined) {
+      if (updateTaskDto.dependencyTaskId) {
+        task.dependencyTask = await this.taskRepository.findOne({
+          where: { id: updateTaskDto.dependencyTaskId },
+        });
+      } else {
+        task.dependencyTask = null;
+      }
+    }
+
+    return this.taskRepository.save(task);
+  }
+
+  async toggleComplete(id: string): Promise<Task> {
+    const task = await this.taskRepository.findOne({
+      where: { id },
+      relations: ['account'],
+    });
+
+    if (!task) {
+      throw new NotFoundException(`Task with ID ${id} not found`);
+    }
+
+    // Toggle completion status
+    task.completed = !task.completed;
+
+    // Set completedDate based on completion status
+    if (task.completed) {
+      task.completedDate = new Date();
+      // Track goal progress when task is completed
+      await this.goalsService.addProgressForMetric(
+        task.account.id.toString(),
+        GoalMetric.TASKS_COMPLETED,
+        1,
+      );
+    } else {
+      await this.goalsService.subtractProgressForMetric(
+        task.account.id.toString(),
+        GoalMetric.TASKS_COMPLETED,
+        1,
+      );
+      task.completedDate = null;
+    }
+
     return this.taskRepository.save(task);
   }
 

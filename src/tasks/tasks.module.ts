@@ -5,9 +5,10 @@ import { TaskController } from './controllers/tasks/tasks.controller';
 import { Task } from './entities/task.entity';
 import { TaskService } from './services/task/task.service';
 import { JwtService } from '@nestjs/jwt';
+import { GoalsModule } from 'src/goals/goals.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Task]), AccountModule],
+  imports: [TypeOrmModule.forFeature([Task]), AccountModule, GoalsModule],
   controllers: [TaskController],
   providers: [TaskService, JwtService],
 })

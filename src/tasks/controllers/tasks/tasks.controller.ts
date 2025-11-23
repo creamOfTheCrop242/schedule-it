@@ -57,10 +57,16 @@ export class TaskController {
     return this.taskService.findOne(id);
   }
 
-  @Patch()
+  @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  update(@Body() updateTaskDto: UpdateTaskDto, @Req() req: any) {
-    return this.taskService.update(updateTaskDto, req.user.id);
+  update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto) {
+    return this.taskService.update(updateTaskDto, id);
+  }
+
+  @Patch(':id/toggle-status')
+  @UseGuards(JwtAuthGuard)
+  toggleComplete(@Param('id') id: string) {
+    return this.taskService.toggleComplete(id);
   }
 
   @Delete(':id')
