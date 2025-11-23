@@ -29,7 +29,5 @@ export class UpdateTaskDto {
   priority?: 'Low' | 'Medium' | 'High';
   startDate?: Date;
   dueDate?: Date;
-  completed?: boolean;
-  completedDate?: Date;
   dependencyTaskId?: string;
 }

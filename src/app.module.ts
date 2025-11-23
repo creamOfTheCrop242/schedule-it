@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { AccountModule } from './accounts/account.module';
 import { MailService } from './mail/mail.service';
 import { TasksModule } from './tasks/tasks.module';
+import { GoalsModule } from './goals/goals.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TasksModule } from './tasks/tasks.module';
     AuthModule,
     AccountModule,
     TasksModule,
+    GoalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
