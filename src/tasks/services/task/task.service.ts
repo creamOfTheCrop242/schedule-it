@@ -97,6 +97,7 @@ export class TaskService {
     const accountId = this.extractAccountIdFromToken(token);
 
     if (status === 'true' && !completedDate) {
+      console.log(completedDate + ' line 100');
       const today = new Date();
       const year = today.getFullYear();
       const month = String(today.getMonth() + 1).padStart(2, '0');
