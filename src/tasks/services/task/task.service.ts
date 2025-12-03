@@ -87,7 +87,7 @@ export class TaskService {
       timeZone?: string;
     } = {},
   ): Promise<Task[]> {
-    const { completedDate, status, token, timeZone } = request;
+    let { completedDate, status, token, timeZone } = request;
 
     console.log('timeZone', timeZone);
 
@@ -95,6 +95,14 @@ export class TaskService {
       throw new UnauthorizedException('Token is required');
     }
     const accountId = this.extractAccountIdFromToken(token);
+
+    if (status === 'true' && !completedDate) {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      completedDate = `${year}-${month}-${day}`;
+    }
 
     const queryBuilder = this.taskRepository
       .createQueryBuilder('task')
