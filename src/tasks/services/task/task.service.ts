@@ -8,7 +8,7 @@ import { Repository } from 'typeorm';
 
 import { JwtService } from '@nestjs/jwt';
 import { addDays } from 'date-fns';
-import { fromZonedTime } from 'date-fns-tz';
+import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { AccountService } from 'src/accounts/services/account/account.service';
 import { Task } from 'src/tasks/entities/task.entity';
 import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
@@ -97,11 +97,15 @@ export class TaskService {
     const accountId = this.extractAccountIdFromToken(token);
 
     if (status === 'true' && !completedDate) {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      completedDate = `${year}-${month}-${day}`;
+      const now = new Date();
+      // If timezone is provided, get today's date in that timezone, otherwise use UTC
+      if (timeZone) {
+        completedDate = formatInTimeZone(now, timeZone, 'yyyy-MM-dd');
+      } else {
+        // Default to UTC if timezone not provided
+        completedDate = formatInTimeZone(now, 'UTC', 'yyyy-MM-dd');
+        timeZone = 'UTC';
+      }
       console.log(completedDate + ' line 100');
     }
 
