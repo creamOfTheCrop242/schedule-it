@@ -46,7 +46,23 @@ export class TaskService {
       dependencyTask,
     });
 
-    return this.taskRepository.save(task);
+    if (task.completed && !task.completedDate) {
+      task.completedDate = new Date();
+    }
+
+    const savedTask = await this.taskRepository.save(task);
+
+    // Track goal progress if task is created as completed
+    console.log('savedTask', savedTask);
+    if (savedTask.completed) {
+      await this.goalsService.addProgressForMetric(
+        accountId,
+        GoalMetric.TASKS_COMPLETED,
+        1,
+      );
+    }
+
+    return savedTask;
   }
 
   /** Convert a local date string ("YYYY-MM-DD") into a UTC start/end range */
