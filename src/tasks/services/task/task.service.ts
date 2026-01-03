@@ -53,7 +53,6 @@ export class TaskService {
     const savedTask = await this.taskRepository.save(task);
 
     // Track goal progress if task is created as completed
-    console.log('savedTask', savedTask);
     if (savedTask.completed) {
       await this.goalsService.addProgressForMetric(
         accountId,
@@ -141,17 +140,17 @@ export class TaskService {
           completedDate,
           timeZone,
         );
-        console.log('=== DATE FILTERING DEBUG ===');
-        console.log('Input completedDate:', completedDate);
-        console.log('Input timeZone:', timeZone);
-        console.log('Server timezone offset:', new Date().getTimezoneOffset());
-        console.log(
-          'Filtering between UTC:',
-          startUtc.toISOString(),
-          'and',
-          endUtc.toISOString(),
-        );
-        console.log('================================');
+        // console.log('=== DATE FILTERING DEBUG ===');
+        // console.log('Input completedDate:', completedDate);
+        // console.log('Input timeZone:', timeZone);
+        // console.log('Server timezone offset:', new Date().getTimezoneOffset());
+        // console.log(
+        //   'Filtering between UTC:',
+        //   startUtc.toISOString(),
+        //   'and',
+        //   endUtc.toISOString(),
+        // );
+        // console.log('================================');
         queryBuilder.andWhere(
           'task.completedDate >= :startUtc AND task.completedDate < :endUtc',
           { startUtc, endUtc },
@@ -162,7 +161,16 @@ export class TaskService {
     } else if (status === 'false') {
       queryBuilder
         .andWhere('task.completed = false')
-        .orderBy('task.createdAt', 'DESC');
+        .addOrderBy(
+          `CASE task.priority 
+            WHEN 'High' THEN 1 
+            WHEN 'Medium' THEN 2 
+            WHEN 'Low' THEN 3 
+            ELSE 4 
+          END`,
+          'ASC',
+        )
+        .addOrderBy('task.createdAt', 'DESC');
     }
 
     return queryBuilder.getMany();
