@@ -199,13 +199,42 @@ export class TaskService {
   }
 
   async update(updateTaskDto: UpdateTaskDto, id: string): Promise<Task> {
-    const task = await this.taskRepository.preload({
-      id,
-      ...updateTaskDto,
+    const task = await this.taskRepository.findOne({
+      where: { id },
+      relations: ['account'],
     });
 
     if (!task) {
       throw new NotFoundException(`Task with ID ${id} not found`);
+    }
+
+    // Track previous completion status for goal progress tracking
+    const wasCompleted = task.completed;
+
+    // Update task properties
+    if (updateTaskDto.name !== undefined) task.name = updateTaskDto.name;
+    if (updateTaskDto.description !== undefined)
+      task.description = updateTaskDto.description;
+    if (updateTaskDto.priority !== undefined)
+      task.priority = updateTaskDto.priority;
+    if (updateTaskDto.startDate !== undefined)
+      task.startDate = updateTaskDto.startDate;
+    if (updateTaskDto.dueDate !== undefined)
+      task.dueDate = updateTaskDto.dueDate;
+
+    // Handle completion status and completedDate
+    if (updateTaskDto.completed !== undefined) {
+      task.completed = updateTaskDto.completed;
+      if (task.completed) {
+        // If being set to completed, set completedDate if not provided
+        task.completedDate = updateTaskDto.completedDate ?? new Date();
+      } else {
+        // If being set to not completed, clear completedDate
+        task.completedDate = null;
+      }
+    } else if (updateTaskDto.completedDate !== undefined) {
+      // Allow updating completedDate without changing completed status
+      task.completedDate = updateTaskDto.completedDate;
     }
 
     // Handle dependencyTask if dependencyTaskId is provided
@@ -219,7 +248,29 @@ export class TaskService {
       }
     }
 
-    return this.taskRepository.save(task);
+    const savedTask = await this.taskRepository.save(task);
+
+    // Track goal progress if completion status changed
+    if (
+      updateTaskDto.completed !== undefined &&
+      wasCompleted !== task.completed
+    ) {
+      if (task.completed) {
+        await this.goalsService.addProgressForMetric(
+          task.account.id.toString(),
+          GoalMetric.TASKS_COMPLETED,
+          1,
+        );
+      } else {
+        await this.goalsService.subtractProgressForMetric(
+          task.account.id.toString(),
+          GoalMetric.TASKS_COMPLETED,
+          1,
+        );
+      }
+    }
+
+    return savedTask;
   }
 
   async toggleComplete(id: string): Promise<Task> {
