@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Put,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AccountService } from 'src/accounts/services/account/account.service';
@@ -14,6 +15,12 @@ import { UpdateAccountDto, UpdatePasswordDto } from '../../dto/account.dto';
 @Controller('account')
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getCurrentUser(@Req() req: any) {
+    return this.accountService.getCurrentUser(req.user.id);
+  }
 
   @Get('accounts')
   @UseGuards(JwtAuthGuard)

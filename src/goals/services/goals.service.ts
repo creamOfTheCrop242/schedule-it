@@ -37,6 +37,7 @@ export class GoalsService {
         targetValue: String(targetValue),
         filters,
       });
+      console.log('created new goal', def);
     } else {
       def.targetValue = String(targetValue);
       def.filters = filters;
