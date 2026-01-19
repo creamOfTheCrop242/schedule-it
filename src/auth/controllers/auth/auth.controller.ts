@@ -35,8 +35,23 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
+  // Helper method for consistent cookie configuration
+  private getCookieOptions() {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+      httpOnly: true,
+      secure: isProduction, // true in production, false in dev
+      sameSite: 'lax' as const, // Works for same-domain
+      path: '/',
+      maxAge: 60 * 60 * 1000, // 1 hour
+    };
+  }
+
   @Post('register')
-  async createAccount(@Body() request: VerifyEmailDto, req, @Res() res: any) {
+  async createAccount(
+    @Body() request: VerifyEmailDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const newAccount = await this.accountService.createAccount(request);
 
     if (newAccount) {
@@ -45,15 +60,10 @@ export class AuthController {
         id: newAccount.id,
       });
 
-      res.cookie('access_token', token, {
-        httpOnly: true, // ✅ Prevents JavaScript access (XSS protection)
-        secure: false, // ✅ Only send over HTTPS (set `false` for local dev)
-        // sameSite: 'strict', // ✅ Protects against CSRF attacks
-        maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
-      });
+      res.cookie('access_token', token, this.getCookieOptions());
     }
 
-    return res.json(newAccount);
+    return newAccount;
   }
 
   @Post('send-verify-code')
@@ -71,15 +81,12 @@ export class AuthController {
 
   @Post('login')
   @UseGuards(LocalAuthGuard)
-  async login(@Req() request: AuthenticatedLoginRequest, @Res() res: Response) {
-    res.cookie('access_token', request.user.token, {
-      httpOnly: true, // ✅ Prevents JavaScript access (XSS protection)
-      secure: false, // ✅ Only send over HTTPS (set `false` for local dev)
-      // sameSite: 'strict', // ✅ Protects against CSRF attacks
-      maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
-    });
-    console.log('cookie created');
-    return res.json({ isloggedIn: true });
+  async login(
+    @Req() request: AuthenticatedLoginRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    res.cookie('access_token', request.user.token, this.getCookieOptions());
+    return { isloggedIn: true };
   }
 
   @Get('google')
@@ -91,25 +98,12 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
-    const token = req.user as string; // you said req.user is the token
+    const token = req.user as string;
 
-    // Set the cookie on the callback response
-    res.cookie('access_token', token, {
-      httpOnly: true,
-      secure: true, // required with SameSite=None
-      sameSite: 'none', // not "none Secure"
-      path: '/',
-      maxAge: 60 * 60 * 1000,
-      // domain: '.theguidelog.com',
-    });
-
-    // (Optional) log to confirm header is present
-    console.log('Set-Cookie about to send:', res.getHeader('Set-Cookie'));
+    res.cookie('access_token', token, this.getCookieOptions());
 
     const frontend = this.configService.get<string>('FRONTEND_URL')!;
-    console.log('being redirected to', frontend);
 
-    // Send 200 + client redirect (meta + JS). This avoids any proxies dropping headers on 302.
     return res
       .status(200)
       .type('html')
@@ -130,15 +124,16 @@ export class AuthController {
 
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
-  async facebookAuthRedirect(@Req() req, @Res() res: any) {
-    res.cookie('access_token', req.user, {
-      httpOnly: true, // ✅ Prevents JavaScript access (XSS protection)
-      secure: false, // ✅ Only send over HTTPS (set `false` for local dev)
-      // sameSite: 'strict', // ✅ Protects against CSRF attacks
-      maxAge: 60 * 60 * 1000, // ✅ Token expires in 1 hour
-    });
+  async facebookAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    res.cookie('access_token', req.user, this.getCookieOptions());
 
     return res.redirect(`${this.configService.get<string>('FRONTEND_URL')}`);
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('access_token', this.getCookieOptions());
+    return { message: 'Logged out successfully' };
   }
 
   @Get('status')

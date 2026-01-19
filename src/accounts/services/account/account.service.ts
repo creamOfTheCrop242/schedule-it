@@ -89,6 +89,28 @@ export class AccountService {
     });
   }
 
+  async getCurrentUser(userId: number) {
+    const account = await this.accountRepository.findOne({
+      where: { id: userId },
+      select: [
+        'id',
+        'email',
+        'name',
+        'googleId',
+        'facebookId',
+        'profileImage',
+        'createdAt',
+        'deletedAt',
+      ],
+    });
+
+    if (!account) {
+      throw new HttpException('User not found', 404);
+    }
+
+    return account;
+  }
+
   async getAccounts() {
     return await this.accountRepository.find();
   }
