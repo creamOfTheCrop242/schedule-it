@@ -8,7 +8,7 @@ export enum GoalScope {
 
 // goal-metric.enum.ts
 export enum GoalMetric {
-  TASKS_COMPLETED = 'TASKS_COMPLETED',
+  LOGS_COMPLETED = 'LOGS_COMPLETED',
   // later: HABITS_COMPLETED, MINUTES_FOCUSED, etc.
 }
 
@@ -22,13 +22,13 @@ export class UpsertGoalDto {
 
 export class AddProgressDto {
   metric: GoalMetric;
-  amount: number; // usually 1 when completing 1 task
+  amount: number; // usually 1 when completing 1 log
   at?: string; // optional ISO string date for retroactive events
 }
 
 export class SubtractProgressDto {
   metric: GoalMetric;
-  amount: number; // usually 1 when undoing 1 task
+  amount: number; // usually 1 when undoing 1 log
   at?: string; // optional ISO date
 }
 

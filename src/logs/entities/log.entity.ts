@@ -12,10 +12,10 @@ import {
   JoinColumn,
 } from 'typeorm';
 
-export type TaskPriority = 'Low' | 'Medium' | 'High';
+export type LogPriority = 'Low' | 'Medium' | 'High';
 
-@Entity('task') // keep table name stable
-export class Task {
+@Entity('log')
+export class Log {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -28,12 +28,11 @@ export class Task {
   @Column({
     type: 'enum',
     enum: ['Low', 'Medium', 'High'],
-    enumName: 'task_priority_enum', // prevents enum churn on deploys
+    enumName: 'log_priority_enum',
     default: 'Medium',
   })
-  priority: TaskPriority;
+  priority: LogPriority;
 
-  // ---- timestamps (with zone!) ----
   @Column({ type: 'timestamptz', nullable: true })
   startDate: Date | null;
 
@@ -46,15 +45,14 @@ export class Task {
   @Column({ type: 'timestamptz', nullable: true })
   completedDate: Date | null;
 
-  // self-reference (optional: cascade delete to null)
-  @ManyToOne(() => Task, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'dependencyTaskId' })
-  dependencyTask: Task | null;
+  @ManyToOne(() => Log, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'dependencyLogId' })
+  dependencyLog: Log | null;
 
-  @OneToMany(() => Note, (note) => note.task)
-  notes: Note[]; // was Note
+  @OneToMany(() => Note, (note) => note.log)
+  notes: Note[];
 
-  @ManyToOne(() => Account, (account) => account.tasks, { nullable: false })
+  @ManyToOne(() => Account, (account) => account.logs, { nullable: false })
   @JoinColumn({ name: 'accountId' })
   account: Account;
 

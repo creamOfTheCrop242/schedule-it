@@ -1,5 +1,5 @@
 import { Note } from 'src/notes/entities/note.entity';
-import { Task } from 'src/tasks/entities/task.entity';
+import { Log } from 'src/logs/entities/log.entity';
 import {
   Column,
   CreateDateColumn,
@@ -38,10 +38,10 @@ export class Account {
   @DeleteDateColumn()
   deletedAt?: Date;
 
-  @OneToMany(() => Task, (task) => task.account)
-  tasks: Task[];
+  @OneToMany(() => Log, (log) => log.account)
+  logs: Log[];
 
-  @OneToMany(() => Note, (note) => note.task)
+  @OneToMany(() => Note, (note) => note.log)
   notes: Note;
 
   // @OneToMany(() => List, (list) => list.account)

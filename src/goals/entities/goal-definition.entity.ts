@@ -29,7 +29,7 @@ export class GoalDefinition {
   account: Account;
 
   // 📊 What this goal is measuring
-  // e.g., TASKS_COMPLETED, HABITS_COMPLETED, WORKOUTS_DONE, etc.
+  // e.g., LOGS_COMPLETED, HABITS_COMPLETED, WORKOUTS_DONE, etc.
   @Column({ type: 'enum', enum: GoalMetric })
   @Index()
   metric: GoalMetric;
@@ -39,7 +39,7 @@ export class GoalDefinition {
   @Index()
   scope: GoalScope;
 
-  // 🎯 The target number (e.g. "10 tasks/day", "50 tasks/week")
+  // 🎯 The target number (e.g. "10 logs/day", "50 logs/week")
   @Column({ type: 'numeric', precision: 12, scale: 2 })
   targetValue: string;
 
