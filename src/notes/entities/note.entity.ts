@@ -1,5 +1,5 @@
 import { Account } from 'src/accounts/entities/account.entity';
-import { Task } from 'src/tasks/entities/task.entity';
+import { Log } from 'src/logs/entities/log.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -20,11 +20,11 @@ export class Note {
   @ManyToOne(() => Account, (account) => account.notes, { onDelete: 'CASCADE' })
   account: Account;
 
-  @ManyToOne(() => Task, (task) => task.notes, {
+  @ManyToOne(() => Log, (log) => log.notes, {
     nullable: true,
     onDelete: 'SET NULL',
   })
-  task: Task;
+  log: Log;
 
   @CreateDateColumn()
   createdAt: Date;

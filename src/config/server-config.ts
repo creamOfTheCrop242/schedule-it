@@ -2,7 +2,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { Account } from 'src/accounts/entities/account.entity';
 import { EmailVerification } from 'src/auth/entities/email-verification.entity';
 import { Note } from 'src/notes/entities/note.entity';
-import { Task } from 'src/tasks/entities/task.entity';
+import { Log } from 'src/logs/entities/log.entity';
 import { GoalDefinition } from 'src/goals/entities/goal-definition.entity';
 import { GoalProgress } from 'src/goals/entities/goal-progress.entity';
 
@@ -17,7 +17,7 @@ export const serverConfig: TypeOrmModuleOptions = {
     Account,
     EmailVerification,
     Note,
-    Task,
+    Log,
     GoalDefinition,
     GoalProgress,
   ],

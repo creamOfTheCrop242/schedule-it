@@ -7,7 +7,7 @@ import { serverConfig } from './config/server-config';
 import { AuthModule } from './auth/auth.module';
 import { AccountModule } from './accounts/account.module';
 import { MailService } from './mail/mail.service';
-import { TasksModule } from './tasks/tasks.module';
+import { LogsModule } from './logs/logs.module';
 import { GoalsModule } from './goals/goals.module';
 
 @Module({
@@ -19,7 +19,7 @@ import { GoalsModule } from './goals/goals.module';
     TypeOrmModule.forRoot(serverConfig),
     AuthModule,
     AccountModule,
-    TasksModule,
+    LogsModule,
     GoalsModule,
   ],
   controllers: [AppController],

@@ -13,31 +13,30 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.auth.guard';
-import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
-import { TaskService } from 'src/tasks/services/task/task.service';
+import { CreateLogDto, UpdateLogDto } from 'src/logs/models/logs.model';
+import { LogService } from 'src/logs/services/log/log.service';
 
-@Controller('tasks')
-export class TaskController {
+@Controller('logs')
+export class LogController {
   constructor(
-    private readonly taskService: TaskService,
+    private readonly logService: LogService,
     private readonly jwtService: JwtService,
   ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Body() createTaskDto: CreateTaskDto, @Req() req: any) {
-    return this.taskService.create(createTaskDto, req.user.id);
+  create(@Body() createLogDto: CreateLogDto, @Req() req: any) {
+    return this.logService.create(createLogDto, req.user.id);
   }
 
   @Get()
-  // @UseGuards(JwtAuthGuard)
   findAll(
     @Req() req: Request,
     @Query('completedDate') completedDate?: string,
     @Query('status') status?: string,
     @Query('timeZone') timeZone?: string,
   ) {
-    return this.taskService.findAll({
+    return this.logService.findAll({
       completedDate,
       status,
       token: req.cookies['access_token'],
@@ -47,31 +46,31 @@ export class TaskController {
 
   @Get('counts')
   @UseGuards(JwtAuthGuard)
-  getTaskCounts(@Req() req: any) {
-    return this.taskService.getTaskCounts(req.user.id);
+  getLogCounts(@Req() req: any) {
+    return this.logService.getLogCounts(req.user.id);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id') id: string) {
-    return this.taskService.findOne(id);
+    return this.logService.findOne(id);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto) {
-    return this.taskService.update(updateTaskDto, id);
+  update(@Param('id') id: string, @Body() updateLogDto: UpdateLogDto) {
+    return this.logService.update(updateLogDto, id);
   }
 
   @Patch(':id/toggle-status')
   @UseGuards(JwtAuthGuard)
   toggleComplete(@Param('id') id: string) {
-    return this.taskService.toggleComplete(id);
+    return this.logService.toggleComplete(id);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   remove(@Param('id') id: string) {
-    return this.taskService.remove(id);
+    return this.logService.remove(id);
   }
 }

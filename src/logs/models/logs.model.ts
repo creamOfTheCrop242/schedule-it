@@ -1,4 +1,4 @@
-export interface TaskDto {
+export interface LogDto {
   id: string;
   name: string;
   description?: string;
@@ -7,23 +7,23 @@ export interface TaskDto {
   dueDate?: Date;
   completed: boolean;
   completedDate?: Date;
-  dependencyTaskId?: string;
+  dependencyLogId?: string;
   accountId: string;
   noteIds?: string[];
   createdAt: Date;
   deletedAt?: Date;
 }
 
-export class CreateTaskDto {
+export class CreateLogDto {
   name: string;
   description?: string;
   priority?: 'Low' | 'Medium' | 'High';
   startDate?: Date;
   dueDate?: Date;
-  dependencyTaskId?: string;
+  dependencyLogId?: string;
 }
 
-export class UpdateTaskDto {
+export class UpdateLogDto {
   name?: string;
   description?: string;
   priority?: 'Low' | 'Medium' | 'High';
@@ -31,5 +31,5 @@ export class UpdateTaskDto {
   dueDate?: Date;
   completed?: boolean;
   completedDate?: Date;
-  dependencyTaskId?: string;
+  dependencyLogId?: string;
 }

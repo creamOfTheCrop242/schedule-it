@@ -37,7 +37,7 @@ export class GoalsController {
 
   // ---------------------------------------------------------------------------
   // 📊 Get current status for a metric (all scopes: day/week/month/year)
-  // GET /goals/status?metric=TASKS_COMPLETED
+  // GET /goals/status?metric=LOGS_COMPLETED
   // ---------------------------------------------------------------------------
   @Get('status')
   @UseGuards(JwtAuthGuard)
@@ -49,7 +49,7 @@ export class GoalsController {
   }
 
   // ---------------------------------------------------------------------------
-  // ➕ Add progress for a metric (e.g., complete a task)
+  // ➕ Add progress for a metric (e.g., complete a log)
   // POST /goals/progress/add
   // Body: { metric, amount, at? }
   // ---------------------------------------------------------------------------
