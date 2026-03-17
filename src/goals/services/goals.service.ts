@@ -28,7 +28,6 @@ export class GoalsService {
       where: { account: { id: parseInt(accountId) }, metric, scope },
     });
 
-    console.log('no existing goal');
     if (!def) {
       def = this.defs.create({
         account: { id: parseInt(accountId) } as any,
@@ -37,7 +36,6 @@ export class GoalsService {
         targetValue: String(targetValue),
         filters,
       });
-      console.log('created new goal', def);
     } else {
       def.targetValue = String(targetValue);
       def.filters = filters;

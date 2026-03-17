@@ -33,13 +33,13 @@ export class MailService {
     }
 
     const hash = await bcrypt.hash(request.password, 10);
-    request.password = hash;
+    const requestCopy = { ...request, password: hash };
 
     const verificationCode = this.verificationCode().toString();
-    this.emailVerificationRepository.save({
+    await this.emailVerificationRepository.save({
       code: verificationCode,
       email: request.email,
-      accountDetails: JSON.stringify(request),
+      accountDetails: JSON.stringify(requestCopy),
     });
 
     const mailOptions = {

@@ -42,7 +42,7 @@ export class Account {
   logs: Log[];
 
   @OneToMany(() => Note, (note) => note.log)
-  notes: Note;
+  notes: Note[];
 
   // @OneToMany(() => List, (list) => list.account)
   // lists: List[];xs

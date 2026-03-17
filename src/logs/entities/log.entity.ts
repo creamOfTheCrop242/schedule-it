@@ -34,10 +34,10 @@ export class Log {
   priority: LogPriority;
 
   @Column({ type: 'timestamptz', nullable: true })
-  startDate: Date | null;
+  startTime: Date | null;
 
   @Column({ type: 'timestamptz', nullable: true })
-  dueDate: Date | null;
+  endTime: Date | null;
 
   @Column({ default: false })
   completed: boolean;

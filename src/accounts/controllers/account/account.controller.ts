@@ -3,14 +3,18 @@ import {
   Controller,
   Delete,
   Get,
-  Param,
   Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { AccountService } from 'src/accounts/services/account/account.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.auth.guard';
 import { UpdateAccountDto, UpdatePasswordDto } from '../../dto/account.dto';
+
+interface AuthenticatedRequest extends Request {
+  user: { id: string | number };
+}
 
 @Controller('account')
 export class AccountController {
@@ -18,37 +22,28 @@ export class AccountController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getCurrentUser(@Req() req: any) {
+  getCurrentUser(@Req() req: AuthenticatedRequest) {
     return this.accountService.getCurrentUser(req.user.id);
-  }
-
-  @Get('accounts')
-  @UseGuards(JwtAuthGuard)
-  getAccounts() {
-    return this.accountService.getAccounts();
-  }
-
-  @Get(':id')
-  @UseGuards(JwtAuthGuard)
-  getAccount(@Param('id') id: string) {
-    return this.accountService.findAccountById(id);
   }
 
   @Put('update')
   @UseGuards(JwtAuthGuard)
-  updateAccount(@Body() request: UpdateAccountDto) {
-    return this.accountService.updateAccount(request);
+  updateAccount(@Req() req: AuthenticatedRequest, @Body() body: UpdateAccountDto) {
+    return this.accountService.updateAccount(req.user.id, body);
   }
 
   @Put('update-password')
   @UseGuards(JwtAuthGuard)
-  updatePassword(@Body() request: UpdatePasswordDto) {
-    return this.accountService.updatePassword(request);
+  updatePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: UpdatePasswordDto,
+  ) {
+    return this.accountService.updatePassword(req.user.id, body);
   }
 
-  @Delete('delete/:id')
+  @Delete('me')
   @UseGuards(JwtAuthGuard)
-  deleteAccount(@Param('id') id: string) {
-    return this.accountService.deleteAccount(id);
+  deleteAccount(@Req() req: AuthenticatedRequest) {
+    return this.accountService.deleteAccount(String(req.user.id));
   }
 }

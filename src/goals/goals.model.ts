@@ -1,3 +1,5 @@
+import { IsEnum, IsNumber, IsOptional, IsObject, IsDateString } from 'class-validator';
+
 // goal-scope.enum.ts
 export enum GoalScope {
   DAY = 'DAY',
@@ -8,28 +10,48 @@ export enum GoalScope {
 
 // goal-metric.enum.ts
 export enum GoalMetric {
+  LOGS_ADDED = 'LOGS_ADDED',
   LOGS_COMPLETED = 'LOGS_COMPLETED',
   // later: HABITS_COMPLETED, MINUTES_FOCUSED, etc.
 }
 
 export class UpsertGoalDto {
+  @IsEnum(GoalMetric)
   metric: GoalMetric;
+
+  @IsEnum(GoalScope)
   scope: GoalScope;
+
+  @IsNumber()
   targetValue: number;
-  // optional filters for more specific goals (project, tag, etc.)
+
+  @IsOptional()
+  @IsObject()
   filters?: Record<string, any>;
 }
 
 export class AddProgressDto {
+  @IsEnum(GoalMetric)
   metric: GoalMetric;
-  amount: number; // usually 1 when completing 1 log
-  at?: string; // optional ISO string date for retroactive events
+
+  @IsNumber()
+  amount: number;
+
+  @IsOptional()
+  @IsDateString()
+  at?: string;
 }
 
 export class SubtractProgressDto {
+  @IsEnum(GoalMetric)
   metric: GoalMetric;
-  amount: number; // usually 1 when undoing 1 log
-  at?: string; // optional ISO date
+
+  @IsNumber()
+  amount: number;
+
+  @IsOptional()
+  @IsDateString()
+  at?: string;
 }
 
 export class SetPeriodTargetDto {

@@ -4,14 +4,12 @@ export class RegisterAccountDto {
   password: string;
 }
 
-export interface UpdateAccountDto extends RegisterAccountDto {
-  id: number;
-  bio: string;
-  name: string;
+export interface UpdateAccountDto {
+  name?: string;
+  email?: string;
 }
 
 export interface UpdatePasswordDto {
-  id: string;
   password: string;
 }
 
