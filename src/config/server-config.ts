@@ -7,8 +7,10 @@ import { GoalDefinition } from 'src/goals/entities/goal-definition.entity';
 import { GoalProgress } from 'src/goals/entities/goal-progress.entity';
 
 function getDbConfig() {
+  // Heroku Postgres and most cloud DBs require SSL. Default to SSL in production when using DATABASE_URL.
   const ssl =
-    process.env.DB_SSL === 'true'
+    process.env.DB_SSL === 'true' ||
+    (process.env.NODE_ENV === 'production' && process.env.DATABASE_URL)
       ? { rejectUnauthorized: false }
       : false;
   const url =
