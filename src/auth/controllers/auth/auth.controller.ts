@@ -75,7 +75,7 @@ export class AuthController {
     if (!hasExistingAccount) {
       return this.mailService.sendVerificationEmail(request);
     } else {
-      throw new HttpException('Error Account Exists', 500);
+      throw new HttpException('Error Account Exists', 409);
     }
   }
 

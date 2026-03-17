@@ -23,8 +23,7 @@ export class GoalsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   async upsertGoal(@Req() req, @Body() body: UpsertGoalDto) {
-    const accountId = req.user.id; // adjust if you pass userId differently
-    console.log('userId', accountId);
+    const accountId = req.user.id;
 
     return this.goalsService.upsertGoal(
       accountId,

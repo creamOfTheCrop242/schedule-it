@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -35,9 +37,16 @@ export class LogService {
 
     let dependencyLog = null;
     if (dependencyLogId) {
+      const accountIdNum =
+        typeof accountId === 'string' ? parseInt(accountId, 10) : accountId;
       dependencyLog = await this.logRepository.findOne({
-        where: { id: dependencyLogId },
+        where: { id: dependencyLogId, account: { id: accountIdNum } },
       });
+      if (!dependencyLog) {
+        throw new ForbiddenException(
+          'Dependency log not found or does not belong to your account',
+        );
+      }
     }
 
     const log = this.logRepository.create({
@@ -51,6 +60,12 @@ export class LogService {
     }
 
     const savedLog = await this.logRepository.save(log);
+
+    await this.goalsService.addProgressForMetric(
+      accountId,
+      GoalMetric.LOGS_ADDED,
+      1,
+    );
 
     if (savedLog.completed) {
       await this.goalsService.addProgressForMetric(
@@ -81,16 +96,19 @@ export class LogService {
     request: {
       completedDate?: string;
       status?: string;
-      token?: string;
+      accountId?: string;
       timeZone?: string;
     } = {},
   ): Promise<Log[]> {
-    let { completedDate, status, token, timeZone } = request;
+    let { completedDate, status, accountId, timeZone } = request;
 
-    if (!token) {
-      throw new UnauthorizedException('Token is required');
+    if (!accountId) {
+      throw new UnauthorizedException('Account ID is required');
     }
-    const accountId = this.extractAccountIdFromToken(token);
+    const accountIdNum = parseInt(accountId, 10);
+    if (Number.isNaN(accountIdNum)) {
+      throw new UnauthorizedException('Invalid account ID');
+    }
 
     if (status === 'true' && !completedDate) {
       const now = new Date();
@@ -107,7 +125,7 @@ export class LogService {
       .leftJoinAndSelect('log.dependencyLog', 'dependencyLog')
       .leftJoinAndSelect('log.notes', 'notes')
       .where('log.deletedAt IS NULL')
-      .andWhere('log.accountId = :accountId', { accountId });
+      .andWhere('log.accountId = :accountId', { accountId: accountIdNum });
 
     if (status === 'true') {
       queryBuilder.andWhere('log.completed = true');
@@ -137,23 +155,26 @@ export class LogService {
           'ASC',
         )
         .addOrderBy('log.createdAt', 'DESC');
+    } else if (completedDate && timeZone) {
+      const { startUtc, endUtc } = this.getUtcRangeFromLocalDate(
+        completedDate,
+        timeZone,
+      );
+      queryBuilder.andWhere(
+        '(log.completed = true AND log.completedDate >= :startUtc AND log.completedDate < :endUtc) OR (log.completed = false AND log.createdAt >= :startUtc AND log.createdAt < :endUtc)',
+        { startUtc, endUtc },
+      );
+      queryBuilder
+        .addOrderBy('log.completed', 'DESC')
+        .addOrderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC');
     }
 
     return queryBuilder.getMany();
   }
 
-  private extractAccountIdFromToken(token: string): string {
-    try {
-      const payload = this.jwtService.decode(token);
-      return payload.id;
-    } catch (error) {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-  }
-
-  async findOne(id: string): Promise<Log> {
+  async findOne(id: string, accountId: string): Promise<Log> {
     const log = await this.logRepository.findOne({
-      where: { id },
+      where: { id, account: { id: accountId as unknown as number } },
       relations: ['account', 'dependencyLog', 'notes'],
       withDeleted: false,
     });
@@ -163,9 +184,13 @@ export class LogService {
     return log;
   }
 
-  async update(updateLogDto: UpdateLogDto, id: string): Promise<Log> {
+  async update(
+    updateLogDto: UpdateLogDto,
+    id: string,
+    accountId: string,
+  ): Promise<Log> {
     const log = await this.logRepository.findOne({
-      where: { id },
+      where: { id, account: { id: accountId as unknown as number } },
       relations: ['account'],
     });
 
@@ -180,10 +205,10 @@ export class LogService {
       log.description = updateLogDto.description;
     if (updateLogDto.priority !== undefined)
       log.priority = updateLogDto.priority;
-    if (updateLogDto.startDate !== undefined)
-      log.startDate = updateLogDto.startDate;
-    if (updateLogDto.dueDate !== undefined)
-      log.dueDate = updateLogDto.dueDate;
+    if (updateLogDto.startTime !== undefined)
+      log.startTime = updateLogDto.startTime;
+    if (updateLogDto.endTime !== undefined)
+      log.endTime = updateLogDto.endTime;
 
     if (updateLogDto.completed !== undefined) {
       log.completed = updateLogDto.completed;
@@ -198,9 +223,20 @@ export class LogService {
 
     if (updateLogDto.dependencyLogId !== undefined) {
       if (updateLogDto.dependencyLogId) {
-        log.dependencyLog = await this.logRepository.findOne({
-          where: { id: updateLogDto.dependencyLogId },
+        const accountIdNum =
+          typeof accountId === 'string' ? parseInt(accountId, 10) : accountId;
+        const depLog = await this.logRepository.findOne({
+          where: {
+            id: updateLogDto.dependencyLogId,
+            account: { id: accountIdNum },
+          },
         });
+        if (!depLog) {
+          throw new ForbiddenException(
+            'Dependency log not found or does not belong to your account',
+          );
+        }
+        log.dependencyLog = depLog;
       } else {
         log.dependencyLog = null;
       }
@@ -230,9 +266,9 @@ export class LogService {
     return savedLog;
   }
 
-  async toggleComplete(id: string): Promise<Log> {
+  async toggleComplete(id: string, accountId: string): Promise<Log> {
     const log = await this.logRepository.findOne({
-      where: { id },
+      where: { id, account: { id: accountId as unknown as number } },
       relations: ['account'],
     });
 
@@ -261,21 +297,30 @@ export class LogService {
     return this.logRepository.save(log);
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.logRepository.softDelete(id);
-    if (result.affected === 0) {
+  async remove(id: string, accountId: string): Promise<void> {
+    const log = await this.logRepository.findOne({
+      where: { id, account: { id: accountId as unknown as number } },
+    });
+    if (!log) {
       throw new NotFoundException(`Log with ID ${id} not found`);
     }
+    await this.logRepository.softDelete(id);
   }
 
   async getLogCounts(
-    accountId?: string,
+    accountId: string,
   ): Promise<{ completed: number; incomplete: number; total: number }> {
-    const queryBuilder = this.logRepository.createQueryBuilder('log');
-
-    if (accountId) {
-      queryBuilder.where('log.account.id = :accountId', { accountId });
+    if (!accountId) {
+      throw new UnauthorizedException('Account ID is required');
     }
+    const accountIdNum = parseInt(accountId, 10);
+    if (Number.isNaN(accountIdNum)) {
+      throw new BadRequestException('Invalid account ID');
+    }
+    const queryBuilder = this.logRepository
+      .createQueryBuilder('log')
+      .where('log.deletedAt IS NULL')
+      .andWhere('log.accountId = :accountId', { accountId: accountIdNum });
 
     const [completed, incomplete] = await Promise.all([
       queryBuilder

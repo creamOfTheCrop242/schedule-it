@@ -30,8 +30,9 @@ export class LogController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll(
-    @Req() req: Request,
+    @Req() req: Request & { user: { id: string | number } },
     @Query('completedDate') completedDate?: string,
     @Query('status') status?: string,
     @Query('timeZone') timeZone?: string,
@@ -39,7 +40,7 @@ export class LogController {
     return this.logService.findAll({
       completedDate,
       status,
-      token: req.cookies['access_token'],
+      accountId: String(req.user.id),
       timeZone,
     });
   }
@@ -47,30 +48,34 @@ export class LogController {
   @Get('counts')
   @UseGuards(JwtAuthGuard)
   getLogCounts(@Req() req: any) {
-    return this.logService.getLogCounts(req.user.id);
+    return this.logService.getLogCounts(String(req.user.id));
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  findOne(@Param('id') id: string) {
-    return this.logService.findOne(id);
+  findOne(@Param('id') id: string, @Req() req: Request & { user: { id: string } }) {
+    return this.logService.findOne(id, req.user.id);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  update(@Param('id') id: string, @Body() updateLogDto: UpdateLogDto) {
-    return this.logService.update(updateLogDto, id);
+  update(
+    @Param('id') id: string,
+    @Body() updateLogDto: UpdateLogDto,
+    @Req() req: Request & { user: { id: string } },
+  ) {
+    return this.logService.update(updateLogDto, id, req.user.id);
   }
 
   @Patch(':id/toggle-status')
   @UseGuards(JwtAuthGuard)
-  toggleComplete(@Param('id') id: string) {
-    return this.logService.toggleComplete(id);
+  toggleComplete(@Param('id') id: string, @Req() req: Request & { user: { id: string } }) {
+    return this.logService.toggleComplete(id, req.user.id);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  remove(@Param('id') id: string) {
-    return this.logService.remove(id);
+  remove(@Param('id') id: string, @Req() req: Request & { user: { id: string } }) {
+    return this.logService.remove(id, req.user.id);
   }
 }

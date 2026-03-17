@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import {
@@ -27,7 +27,7 @@ export class AccountService {
     });
 
     if (verificationObj?.code !== request.code) {
-      throw new HttpException('Incorrect Verification Code', 500);
+      throw new HttpException('Incorrect Verification Code', 400);
     }
 
     const tempAccount = JSON.parse(verificationObj.accountDetails);
@@ -39,7 +39,7 @@ export class AccountService {
 
     verificationObj.verified = true;
     verificationObj.code = null;
-    this.emailVerificationRepository.save(verificationObj);
+    await this.emailVerificationRepository.save(verificationObj);
     return await this.accountRepository.save(account);
   }
 
@@ -89,9 +89,10 @@ export class AccountService {
     });
   }
 
-  async getCurrentUser(userId: number) {
+  async getCurrentUser(userId: string | number) {
+    const id = typeof userId === 'string' ? parseInt(userId, 10) : userId;
     const account = await this.accountRepository.findOne({
-      where: { id: userId },
+      where: { id },
       select: [
         'id',
         'email',
@@ -111,31 +112,33 @@ export class AccountService {
     return account;
   }
 
-  async getAccounts() {
-    return await this.accountRepository.find();
+  async deleteAccount(accountId: string) {
+    return await this.accountRepository.softDelete({ id: parseInt(accountId) });
   }
 
-  async deleteAccount(id: string) {
-    return await this.accountRepository.softDelete({ id: parseInt(id) });
-  }
-
-  async updateAccount(request: UpdateAccountDto) {
+  async updateAccount(accountId: string | number, dto: UpdateAccountDto) {
     const account = await this.accountRepository.findOne({
-      where: { id: request.id },
+      where: { id: typeof accountId === 'string' ? parseInt(accountId) : accountId },
     });
 
-    account.email = request.email || account.email;
-    account.name = request.name || account.name;
+    if (!account) {
+      throw new NotFoundException('Account not found');
+    }
+
+    if (dto.email !== undefined) account.email = dto.email;
+    if (dto.name !== undefined) account.name = dto.name;
 
     return await this.accountRepository.save(account);
   }
 
-  async updatePassword(request: UpdatePasswordDto) {
-    const account = await this.findAccountById(request.id);
+  async updatePassword(accountId: string | number, dto: UpdatePasswordDto) {
+    const account = await this.findAccountById(String(accountId));
 
-    account.password =
-      (await bcrypt.hash(request.password, 10)) || account.password;
-    console.log(account.password);
+    if (!account) {
+      throw new NotFoundException('Account not found');
+    }
+
+    account.password = await bcrypt.hash(dto.password, 10);
 
     return await this.accountRepository.save(account);
   }
