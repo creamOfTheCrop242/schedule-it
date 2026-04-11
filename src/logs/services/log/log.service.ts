@@ -198,8 +198,6 @@ export class LogService {
       throw new NotFoundException(`Log with ID ${id} not found`);
     }
 
-    const wasCompleted = log.completed;
-
     if (updateLogDto.name !== undefined) log.name = updateLogDto.name;
     if (updateLogDto.description !== undefined)
       log.description = updateLogDto.description;
@@ -210,16 +208,9 @@ export class LogService {
     if (updateLogDto.endTime !== undefined)
       log.endTime = updateLogDto.endTime;
 
-    if (updateLogDto.completed !== undefined) {
-      log.completed = updateLogDto.completed;
-      if (log.completed) {
-        log.completedDate = updateLogDto.completedDate ?? new Date();
-      } else {
-        log.completedDate = null;
-      }
-    } else if (updateLogDto.completedDate !== undefined) {
-      log.completedDate = updateLogDto.completedDate;
-    }
+    if (updateLogDto.surroundings !== undefined)
+      log.surroundings = updateLogDto.surroundings ?? null;
+    if (updateLogDto.mood !== undefined) log.mood = updateLogDto.mood ?? null;
 
     if (updateLogDto.dependencyLogId !== undefined) {
       if (updateLogDto.dependencyLogId) {
@@ -240,58 +231,6 @@ export class LogService {
       } else {
         log.dependencyLog = null;
       }
-    }
-
-    const savedLog = await this.logRepository.save(log);
-
-    if (
-      updateLogDto.completed !== undefined &&
-      wasCompleted !== log.completed
-    ) {
-      if (log.completed) {
-        await this.goalsService.addProgressForMetric(
-          log.account.id.toString(),
-          GoalMetric.LOGS_COMPLETED,
-          1,
-        );
-      } else {
-        await this.goalsService.subtractProgressForMetric(
-          log.account.id.toString(),
-          GoalMetric.LOGS_COMPLETED,
-          1,
-        );
-      }
-    }
-
-    return savedLog;
-  }
-
-  async toggleComplete(id: string, accountId: string): Promise<Log> {
-    const log = await this.logRepository.findOne({
-      where: { id, account: { id: accountId as unknown as number } },
-      relations: ['account'],
-    });
-
-    if (!log) {
-      throw new NotFoundException(`Log with ID ${id} not found`);
-    }
-
-    log.completed = !log.completed;
-
-    if (log.completed) {
-      log.completedDate = new Date();
-      await this.goalsService.addProgressForMetric(
-        log.account.id.toString(),
-        GoalMetric.LOGS_COMPLETED,
-        1,
-      );
-    } else {
-      await this.goalsService.subtractProgressForMetric(
-        log.account.id.toString(),
-        GoalMetric.LOGS_COMPLETED,
-        1,
-      );
-      log.completedDate = null;
     }
 
     return this.logRepository.save(log);

@@ -25,6 +25,12 @@ export class Log {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  surroundings: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  mood: string | null;
+
   @Column({
     type: 'enum',
     enum: ['Low', 'Medium', 'High'],
