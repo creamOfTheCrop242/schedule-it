@@ -67,12 +67,6 @@ export class LogController {
     return this.logService.update(updateLogDto, id, req.user.id);
   }
 
-  @Patch(':id/toggle-status')
-  @UseGuards(JwtAuthGuard)
-  toggleComplete(@Param('id') id: string, @Req() req: Request & { user: { id: string } }) {
-    return this.logService.toggleComplete(id, req.user.id);
-  }
-
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   remove(@Param('id') id: string, @Req() req: Request & { user: { id: string } }) {

@@ -11,6 +11,8 @@ export interface LogDto {
   id: string;
   name: string;
   description?: string;
+  surroundings?: string;
+  mood?: string;
   priority: 'Low' | 'Medium' | 'High';
   startTime?: Date;
   endTime?: Date;
@@ -30,6 +32,14 @@ export class CreateLogDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  surroundings?: string;
+
+  @IsOptional()
+  @IsString()
+  mood?: string;
 
   @IsOptional()
   @IsIn(['Low', 'Medium', 'High'])
@@ -64,6 +74,14 @@ export class UpdateLogDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  surroundings?: string;
+
+  @IsOptional()
+  @IsString()
+  mood?: string;
 
   @IsOptional()
   @IsIn(['Low', 'Medium', 'High'])

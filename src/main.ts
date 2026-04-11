@@ -103,6 +103,37 @@ async function migrateLogDateColumns(): Promise<void> {
   }
 }
 
+/** One-time migration: add surroundings and mood columns to log table. */
+async function migrateLogSurroundingsMood(): Promise<void> {
+  const url = (serverConfig as { url?: string }).url;
+  if (!url) return;
+
+  const client = new Client({
+    connectionString: url,
+    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+  });
+
+  try {
+    await client.connect();
+
+    await client.query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS surroundings text`).catch((e: unknown) => {
+      const err = e as { code?: string };
+      if (err.code === '42701') return; // column already exists
+      if (err.code === '42P01') return; // table does not exist yet
+      throw e;
+    });
+
+    await client.query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS mood text`).catch((e: unknown) => {
+      const err = e as { code?: string };
+      if (err.code === '42701') return; // column already exists
+      if (err.code === '42P01') return; // table does not exist yet
+      throw e;
+    });
+  } finally {
+    await client.end();
+  }
+}
+
 async function bootstrap() {
   try {
     await migrateGoalMetricToLog();
@@ -114,6 +145,12 @@ async function bootstrap() {
     await migrateLogDateColumns();
   } catch (e) {
     console.warn('[migrate] Log date columns migration skipped or failed:', (e as Error).message);
+  }
+
+  try {
+    await migrateLogSurroundingsMood();
+  } catch (e) {
+    console.warn('[migrate] Log surroundings/mood migration skipped or failed:', (e as Error).message);
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
