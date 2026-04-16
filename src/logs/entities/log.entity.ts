@@ -12,8 +12,6 @@ import {
   JoinColumn,
 } from 'typeorm';
 
-export type LogPriority = 'Low' | 'Medium' | 'High';
-
 @Entity('log')
 export class Log {
   @PrimaryGeneratedColumn('uuid')
@@ -31,22 +29,11 @@ export class Log {
   @Column({ type: 'text', nullable: true })
   mood: string | null;
 
-  @Column({
-    type: 'enum',
-    enum: ['Low', 'Medium', 'High'],
-    enumName: 'log_priority_enum',
-    default: 'Medium',
-  })
-  priority: LogPriority;
-
   @Column({ type: 'timestamptz', nullable: true })
   startTime: Date | null;
 
   @Column({ type: 'timestamptz', nullable: true })
   endTime: Date | null;
-
-  @Column({ default: false })
-  completed: boolean;
 
   @Column({ type: 'timestamptz', nullable: true })
   completedDate: Date | null;

@@ -55,7 +55,7 @@ export class LogService {
       dependencyLog,
     });
 
-    if (log.completed && !log.completedDate) {
+    if (!log.completedDate) {
       log.completedDate = new Date();
     }
 
@@ -67,13 +67,11 @@ export class LogService {
       1,
     );
 
-    if (savedLog.completed) {
-      await this.goalsService.addProgressForMetric(
-        accountId,
-        GoalMetric.LOGS_COMPLETED,
-        1,
-      );
-    }
+    await this.goalsService.addProgressForMetric(
+      accountId,
+      GoalMetric.LOGS_COMPLETED,
+      1,
+    );
 
     return savedLog;
   }
@@ -120,6 +118,10 @@ export class LogService {
       }
     }
 
+    if (status === 'false') {
+      return [];
+    }
+
     const queryBuilder = this.logRepository
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.dependencyLog', 'dependencyLog')
@@ -128,8 +130,6 @@ export class LogService {
       .andWhere('log.accountId = :accountId', { accountId: accountIdNum });
 
     if (status === 'true') {
-      queryBuilder.andWhere('log.completed = true');
-
       if (completedDate && timeZone) {
         const { startUtc, endUtc } = this.getUtcRangeFromLocalDate(
           completedDate,
@@ -142,31 +142,19 @@ export class LogService {
       } else {
         queryBuilder.orderBy('log.completedDate', 'DESC').limit(10);
       }
-    } else if (status === 'false') {
-      queryBuilder
-        .andWhere('log.completed = false')
-        .addOrderBy(
-          `CASE log.priority 
-            WHEN 'High' THEN 1 
-            WHEN 'Medium' THEN 2 
-            WHEN 'Low' THEN 3 
-            ELSE 4 
-          END`,
-          'ASC',
-        )
-        .addOrderBy('log.createdAt', 'DESC');
     } else if (completedDate && timeZone) {
       const { startUtc, endUtc } = this.getUtcRangeFromLocalDate(
         completedDate,
         timeZone,
       );
       queryBuilder.andWhere(
-        '(log.completed = true AND log.completedDate >= :startUtc AND log.completedDate < :endUtc) OR (log.completed = false AND log.createdAt >= :startUtc AND log.createdAt < :endUtc)',
+        '(log.completedDate >= :startUtc AND log.completedDate < :endUtc) OR (log.completedDate IS NULL AND log.createdAt >= :startUtc AND log.createdAt < :endUtc)',
         { startUtc, endUtc },
       );
-      queryBuilder
-        .addOrderBy('log.completed', 'DESC')
-        .addOrderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC');
+      queryBuilder.addOrderBy(
+        'COALESCE(log.completedDate, log.createdAt)',
+        'DESC',
+      );
     }
 
     return queryBuilder.getMany();
@@ -201,8 +189,6 @@ export class LogService {
     if (updateLogDto.name !== undefined) log.name = updateLogDto.name;
     if (updateLogDto.description !== undefined)
       log.description = updateLogDto.description;
-    if (updateLogDto.priority !== undefined)
-      log.priority = updateLogDto.priority;
     if (updateLogDto.startTime !== undefined)
       log.startTime = updateLogDto.startTime;
     if (updateLogDto.endTime !== undefined)
@@ -233,6 +219,15 @@ export class LogService {
       }
     }
 
+    if (updateLogDto.completedDate !== undefined) {
+      log.completedDate = updateLogDto.completedDate
+        ? new Date(updateLogDto.completedDate)
+        : null;
+    }
+    if (!log.completedDate) {
+      log.completedDate = new Date();
+    }
+
     return this.logRepository.save(log);
   }
 
@@ -261,17 +256,8 @@ export class LogService {
       .where('log.deletedAt IS NULL')
       .andWhere('log.accountId = :accountId', { accountId: accountIdNum });
 
-    const [completed, incomplete] = await Promise.all([
-      queryBuilder
-        .clone()
-        .andWhere('log.completed = :completed', { completed: true })
-        .getCount(),
-      queryBuilder
-        .clone()
-        .andWhere('log.completed = :completed', { completed: false })
-        .getCount(),
-    ]);
+    const total = await queryBuilder.getCount();
 
-    return { completed, incomplete, total: completed + incomplete };
+    return { completed: total, incomplete: 0, total };
   }
 }
