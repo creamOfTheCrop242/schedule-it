@@ -1,11 +1,4 @@
-import {
-  IsString,
-  IsOptional,
-  IsIn,
-  IsUUID,
-  IsBoolean,
-  IsDateString,
-} from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsDateString } from 'class-validator';
 
 export interface LogDto {
   id: string;
@@ -13,10 +6,8 @@ export interface LogDto {
   description?: string;
   surroundings?: string;
   mood?: string;
-  priority: 'Low' | 'Medium' | 'High';
   startTime?: Date;
   endTime?: Date;
-  completed: boolean;
   completedDate?: Date;
   dependencyLogId?: string;
   accountId: string;
@@ -42,20 +33,12 @@ export class CreateLogDto {
   mood?: string;
 
   @IsOptional()
-  @IsIn(['Low', 'Medium', 'High'])
-  priority?: 'Low' | 'Medium' | 'High';
-
-  @IsOptional()
   @IsDateString()
   startTime?: Date;
 
   @IsOptional()
   @IsDateString()
   endTime?: Date;
-
-  @IsOptional()
-  @IsBoolean()
-  completed?: boolean;
 
   @IsOptional()
   @IsDateString()
@@ -84,20 +67,12 @@ export class UpdateLogDto {
   mood?: string;
 
   @IsOptional()
-  @IsIn(['Low', 'Medium', 'High'])
-  priority?: 'Low' | 'Medium' | 'High';
-
-  @IsOptional()
   @IsDateString()
   startTime?: Date;
 
   @IsOptional()
   @IsDateString()
   endTime?: Date;
-
-  @IsOptional()
-  @IsBoolean()
-  completed?: boolean;
 
   @IsOptional()
   @IsDateString()

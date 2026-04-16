@@ -134,6 +134,52 @@ async function migrateLogSurroundingsMood(): Promise<void> {
   }
 }
 
+/** One-time migration: drop log.completed; all logs are complete by model (use completedDate). */
+async function migrateLogDropCompletedColumn(): Promise<void> {
+  const url = (serverConfig as { url?: string }).url;
+  if (!url) return;
+
+  const client = new Client({
+    connectionString: url,
+    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+  });
+
+  try {
+    await client.connect();
+
+    await client.query(`ALTER TABLE log DROP COLUMN IF EXISTS completed`).catch((e: unknown) => {
+      const err = e as { code?: string };
+      if (err.code === '42P01') return; // table does not exist yet
+      throw e;
+    });
+  } finally {
+    await client.end();
+  }
+}
+
+/** One-time migration: drop log.priority (no longer used). */
+async function migrateLogDropPriorityColumn(): Promise<void> {
+  const url = (serverConfig as { url?: string }).url;
+  if (!url) return;
+
+  const client = new Client({
+    connectionString: url,
+    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+  });
+
+  try {
+    await client.connect();
+
+    await client.query(`ALTER TABLE log DROP COLUMN IF EXISTS priority`).catch((e: unknown) => {
+      const err = e as { code?: string };
+      if (err.code === '42P01') return; // table does not exist yet
+      throw e;
+    });
+  } finally {
+    await client.end();
+  }
+}
+
 async function bootstrap() {
   try {
     await migrateGoalMetricToLog();
@@ -151,6 +197,18 @@ async function bootstrap() {
     await migrateLogSurroundingsMood();
   } catch (e) {
     console.warn('[migrate] Log surroundings/mood migration skipped or failed:', (e as Error).message);
+  }
+
+  try {
+    await migrateLogDropCompletedColumn();
+  } catch (e) {
+    console.warn('[migrate] Log drop completed column skipped or failed:', (e as Error).message);
+  }
+
+  try {
+    await migrateLogDropPriorityColumn();
+  } catch (e) {
+    console.warn('[migrate] Log drop priority column skipped or failed:', (e as Error).message);
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
