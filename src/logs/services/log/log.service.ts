@@ -139,6 +139,10 @@ export class LogService {
           'log.completedDate >= :startUtc AND log.completedDate < :endUtc',
           { startUtc, endUtc },
         );
+        queryBuilder.orderBy(
+          'COALESCE(log.completedDate, log.createdAt)',
+          'DESC',
+        );
       } else {
         queryBuilder.orderBy('log.completedDate', 'DESC').limit(10);
       }
@@ -152,6 +156,11 @@ export class LogService {
         { startUtc, endUtc },
       );
       queryBuilder.addOrderBy(
+        'COALESCE(log.completedDate, log.createdAt)',
+        'DESC',
+      );
+    } else {
+      queryBuilder.orderBy(
         'COALESCE(log.completedDate, log.createdAt)',
         'DESC',
       );
