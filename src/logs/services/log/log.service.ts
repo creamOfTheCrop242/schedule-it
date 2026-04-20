@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 
 import { JwtService } from '@nestjs/jwt';
 import { addDays } from 'date-fns';
@@ -90,15 +90,99 @@ export class LogService {
     return { startUtc, endUtc };
   }
 
-  async findAll(
-    request: {
-      completedDate?: string;
-      status?: string;
-      accountId?: string;
-      timeZone?: string;
-    } = {},
-  ): Promise<Log[]> {
-    let { completedDate, status, accountId, timeZone } = request;
+  /** Account + date/status predicates shared by list and mood-options queries. */
+  private applySharedListFilters(
+    qb: SelectQueryBuilder<Log>,
+    accountIdNum: number,
+    completedDate: string | undefined,
+    timeZone: string | undefined,
+    status: string | undefined,
+  ): void {
+    qb.where('log.deletedAt IS NULL').andWhere('log.accountId = :accountId', {
+      accountId: accountIdNum,
+    });
+    if (status === 'true') {
+      if (completedDate && timeZone) {
+        const { startUtc, endUtc } = this.getUtcRangeFromLocalDate(
+          completedDate,
+          timeZone,
+        );
+        qb.andWhere(
+          'log.completedDate >= :startUtc AND log.completedDate < :endUtc',
+          { startUtc, endUtc },
+        );
+      }
+    } else if (completedDate && timeZone) {
+      const { startUtc, endUtc } = this.getUtcRangeFromLocalDate(
+        completedDate,
+        timeZone,
+      );
+      qb.andWhere(
+        '((log.completedDate >= :startUtc AND log.completedDate < :endUtc) OR (log.completedDate IS NULL AND log.createdAt >= :startUtc AND log.createdAt < :endUtc))',
+        { startUtc, endUtc },
+      );
+    }
+  }
+
+  private applyListOrderBy(
+    qb: SelectQueryBuilder<Log>,
+    completedDate: string | undefined,
+    timeZone: string | undefined,
+    status: string | undefined,
+  ): void {
+    if (status === 'true') {
+      if (completedDate && timeZone) {
+        qb.orderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC');
+      } else {
+        qb.orderBy('log.completedDate', 'DESC').limit(10);
+      }
+    } else if (completedDate && timeZone) {
+      qb.addOrderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC');
+    } else {
+      qb.orderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC');
+    }
+  }
+
+  private applySearchSubstringFilter(
+    qb: SelectQueryBuilder<Log>,
+    search?: string,
+  ): void {
+    const term = search?.trim();
+    if (!term) {
+      return;
+    }
+    qb.andWhere(
+      '(STRPOS(LOWER(COALESCE(log.name, :emptyStr)), LOWER(:searchPlain)) > 0 OR STRPOS(LOWER(COALESCE(log.surroundings, :emptyStr)), LOWER(:searchPlain)) > 0)',
+      { searchPlain: term, emptyStr: '' },
+    );
+  }
+
+  private applyMoodEqualsFilter(
+    qb: SelectQueryBuilder<Log>,
+    mood?: string,
+  ): void {
+    const m = mood?.trim();
+    if (!m) {
+      return;
+    }
+    qb.andWhere('LOWER(TRIM(log.mood)) = LOWER(TRIM(:filterMood))', {
+      filterMood: m,
+    });
+  }
+
+  private normalizeListRequest(request: {
+    completedDate?: string;
+    status?: string;
+    accountId?: string;
+    timeZone?: string;
+  }): {
+    accountIdNum: number;
+    completedDate?: string;
+    timeZone?: string;
+    status?: string;
+  } | null {
+    const { accountId } = request;
+    let { completedDate, status, timeZone } = request;
 
     if (!accountId) {
       throw new UnauthorizedException('Account ID is required');
@@ -119,54 +203,79 @@ export class LogService {
     }
 
     if (status === 'false') {
+      return null;
+    }
+
+    return { accountIdNum, completedDate, timeZone, status };
+  }
+
+  async findAll(
+    request: {
+      completedDate?: string;
+      status?: string;
+      accountId?: string;
+      timeZone?: string;
+      mood?: string;
+      search?: string;
+    } = {},
+  ): Promise<Log[]> {
+    const { mood, search, ...rest } = request;
+    const normalized = this.normalizeListRequest(rest);
+    if (!normalized) {
       return [];
     }
+    const { accountIdNum, completedDate, timeZone, status } = normalized;
 
     const queryBuilder = this.logRepository
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.dependencyLog', 'dependencyLog')
-      .leftJoinAndSelect('log.notes', 'notes')
-      .where('log.deletedAt IS NULL')
-      .andWhere('log.accountId = :accountId', { accountId: accountIdNum });
+      .leftJoinAndSelect('log.notes', 'notes');
 
-    if (status === 'true') {
-      if (completedDate && timeZone) {
-        const { startUtc, endUtc } = this.getUtcRangeFromLocalDate(
-          completedDate,
-          timeZone,
-        );
-        queryBuilder.andWhere(
-          'log.completedDate >= :startUtc AND log.completedDate < :endUtc',
-          { startUtc, endUtc },
-        );
-        queryBuilder.orderBy(
-          'COALESCE(log.completedDate, log.createdAt)',
-          'DESC',
-        );
-      } else {
-        queryBuilder.orderBy('log.completedDate', 'DESC').limit(10);
-      }
-    } else if (completedDate && timeZone) {
-      const { startUtc, endUtc } = this.getUtcRangeFromLocalDate(
-        completedDate,
-        timeZone,
-      );
-      queryBuilder.andWhere(
-        '(log.completedDate >= :startUtc AND log.completedDate < :endUtc) OR (log.completedDate IS NULL AND log.createdAt >= :startUtc AND log.createdAt < :endUtc)',
-        { startUtc, endUtc },
-      );
-      queryBuilder.addOrderBy(
-        'COALESCE(log.completedDate, log.createdAt)',
-        'DESC',
-      );
-    } else {
-      queryBuilder.orderBy(
-        'COALESCE(log.completedDate, log.createdAt)',
-        'DESC',
-      );
-    }
+    this.applySharedListFilters(
+      queryBuilder,
+      accountIdNum,
+      completedDate,
+      timeZone,
+      status,
+    );
+    this.applySearchSubstringFilter(queryBuilder, search);
+    this.applyMoodEqualsFilter(queryBuilder, mood);
+    this.applyListOrderBy(queryBuilder, completedDate, timeZone, status);
 
     return queryBuilder.getMany();
+  }
+
+  /** Distinct non-null moods for the account matching date + search (not mood). */
+  async findDistinctMoods(request: {
+    completedDate?: string;
+    status?: string;
+    accountId?: string;
+    timeZone?: string;
+    search?: string;
+  }): Promise<string[]> {
+    const { search, ...rest } = request;
+    const normalized = this.normalizeListRequest(rest);
+    if (!normalized) {
+      return [];
+    }
+    const { accountIdNum, completedDate, timeZone, status } = normalized;
+
+    const qb = this.logRepository.createQueryBuilder('log');
+    this.applySharedListFilters(
+      qb,
+      accountIdNum,
+      completedDate,
+      timeZone,
+      status,
+    );
+    this.applySearchSubstringFilter(qb, search);
+    qb.andWhere('log.mood IS NOT NULL');
+    qb.select('log.mood', 'mood')
+      .groupBy('log.mood')
+      .orderBy('log.mood', 'ASC');
+
+    const raw = await qb.getRawMany();
+    return raw.map((row) => row.mood as string);
   }
 
   async findOne(id: string, accountId: string): Promise<Log> {
@@ -200,8 +309,7 @@ export class LogService {
       log.description = updateLogDto.description;
     if (updateLogDto.startTime !== undefined)
       log.startTime = updateLogDto.startTime;
-    if (updateLogDto.endTime !== undefined)
-      log.endTime = updateLogDto.endTime;
+    if (updateLogDto.endTime !== undefined) log.endTime = updateLogDto.endTime;
 
     if (updateLogDto.surroundings !== undefined)
       log.surroundings = updateLogDto.surroundings ?? null;

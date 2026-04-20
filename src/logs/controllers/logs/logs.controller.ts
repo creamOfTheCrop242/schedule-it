@@ -36,12 +36,16 @@ export class LogController {
     @Query('completedDate') completedDate?: string,
     @Query('status') status?: string,
     @Query('timeZone') timeZone?: string,
+    @Query('mood') mood?: string | string[],
+    @Query('search') search?: string | string[],
   ) {
     return this.logService.findAll({
       completedDate,
       status,
       accountId: String(req.user.id),
       timeZone,
+      mood: LogController.firstQueryValue(mood),
+      search: LogController.firstQueryValue(search),
     });
   }
 
@@ -49,6 +53,33 @@ export class LogController {
   @UseGuards(JwtAuthGuard)
   getLogCounts(@Req() req: any) {
     return this.logService.getLogCounts(String(req.user.id));
+  }
+
+  @Get('mood-options')
+  @UseGuards(JwtAuthGuard)
+  getMoodOptions(
+    @Req() req: Request & { user: { id: string | number } },
+    @Query('completedDate') completedDate?: string,
+    @Query('status') status?: string,
+    @Query('timeZone') timeZone?: string,
+    @Query('search') search?: string | string[],
+  ) {
+    return this.logService.findDistinctMoods({
+      completedDate,
+      status,
+      accountId: String(req.user.id),
+      timeZone,
+      search: LogController.firstQueryValue(search),
+    });
+  }
+
+  private static firstQueryValue(
+    value: string | string[] | undefined,
+  ): string | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+    return Array.isArray(value) ? value[0] : value;
   }
 
   @Get(':id')
