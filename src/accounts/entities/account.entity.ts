@@ -1,5 +1,6 @@
 import { Note } from 'src/notes/entities/note.entity';
 import { Log } from 'src/logs/entities/log.entity';
+import { Task } from 'src/tasks/entities/task.entity';
 import {
   Column,
   CreateDateColumn,
@@ -40,6 +41,9 @@ export class Account {
 
   @OneToMany(() => Log, (log) => log.account)
   logs: Log[];
+
+  @OneToMany(() => Task, (task) => task.account)
+  tasks: Task[];
 
   @OneToMany(() => Note, (note) => note.log)
   notes: Note[];
