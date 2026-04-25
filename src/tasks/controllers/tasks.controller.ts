@@ -42,6 +42,15 @@ export class TasksController {
     return this.tasksService.complete(id, String(req.user.id));
   }
 
+  @Post(':id/reopen')
+  @UseGuards(JwtAuthGuard)
+  reopen(
+    @Param('id') id: string,
+    @Req() req: Request & { user: { id: string | number } },
+  ) {
+    return this.tasksService.reopen(id, String(req.user.id));
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   findOne(

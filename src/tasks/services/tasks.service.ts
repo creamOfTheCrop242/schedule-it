@@ -107,4 +107,19 @@ export class TasksService {
     task.completedDate = completedDate;
     return this.taskRepository.save(task);
   }
+
+  /**
+   * Clears completion state and unlinks the task from its log.
+   * The log row (if any) remains in the database; it is no longer linked from this task.
+   * Idempotent when the task is already open.
+   */
+  async reopen(id: string, accountId: string): Promise<Task> {
+    const task = await this.findOne(id, accountId);
+    if (!task.completedDate && !task.log) {
+      return task;
+    }
+    task.completedDate = null;
+    task.log = null;
+    return this.taskRepository.save(task);
+  }
 }
