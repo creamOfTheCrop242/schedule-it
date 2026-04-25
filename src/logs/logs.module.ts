@@ -11,5 +11,6 @@ import { GoalsModule } from 'src/goals/goals.module';
   imports: [TypeOrmModule.forFeature([Log]), AccountModule, GoalsModule],
   controllers: [LogController],
   providers: [LogService, JwtService],
+  exports: [LogService],
 })
 export class LogsModule {}
