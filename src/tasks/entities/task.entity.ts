@@ -1,4 +1,5 @@
 import { Account } from 'src/accounts/entities/account.entity';
+import { Habit } from 'src/habits/entities/habit.entity';
 import { Log } from 'src/logs/entities/log.entity';
 import {
   Column,
@@ -39,6 +40,10 @@ export class Task {
   @ManyToOne(() => Account, (account) => account.tasks, { nullable: false })
   @JoinColumn({ name: 'accountId' })
   account: Account;
+
+  @ManyToOne(() => Habit, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'habitId' })
+  habit: Habit | null;
 
   @CreateDateColumn({ type: 'timestamptz', default: () => 'NOW()' })
   createdAt: Date;

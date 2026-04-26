@@ -211,6 +211,102 @@ async function migrateLogDropPriorityColumn(): Promise<void> {
   }
 }
 
+/** One-time migration: habit table and optional habitId on log/task (FK SET NULL on habit delete). */
+async function migrateHabits(): Promise<void> {
+  const url = (serverConfig as { url?: string }).url;
+  if (!url) return;
+
+  const client = new Client({
+    connectionString: url,
+    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+  });
+
+  try {
+    await client.connect();
+
+    await client
+      .query(`
+        CREATE TABLE IF NOT EXISTS habit (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          name text NOT NULL,
+          description text,
+          "accountId" integer NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+          "createdAt" timestamptz NOT NULL DEFAULT NOW(),
+          "updatedAt" timestamptz NOT NULL DEFAULT NOW(),
+          "deletedAt" timestamptz
+        )
+      `)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P07') return;
+        if (err.code === '42P01') return;
+        throw e;
+      });
+
+    await client
+      .query(`CREATE INDEX IF NOT EXISTS "IDX_habit_accountId" ON habit ("accountId")`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P01') return;
+        throw e;
+      });
+
+    await client.query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS "habitId" uuid`).catch((e: unknown) => {
+      const err = e as { code?: string };
+      if (err.code === '42701') return;
+      if (err.code === '42P01') return;
+      throw e;
+    });
+
+    await client.query(`ALTER TABLE task ADD COLUMN IF NOT EXISTS "habitId" uuid`).catch((e: unknown) => {
+      const err = e as { code?: string };
+      if (err.code === '42701') return;
+      if (err.code === '42P01') return;
+      throw e;
+    });
+
+    await client
+      .query(`
+        DO $c$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'fk_log_habitId'
+          ) THEN
+            ALTER TABLE log
+              ADD CONSTRAINT "fk_log_habitId" FOREIGN KEY ("habitId") REFERENCES habit(id) ON DELETE SET NULL;
+          END IF;
+        END
+        $c$;
+      `)
+      .catch((e: unknown) => {
+        const err = e as { code?: string; message?: string };
+        if (err.message?.includes('already exists')) return;
+        throw e;
+      });
+
+    await client
+      .query(`
+        DO $c$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'fk_task_habitId'
+          ) THEN
+            ALTER TABLE task
+              ADD CONSTRAINT "fk_task_habitId" FOREIGN KEY ("habitId") REFERENCES habit(id) ON DELETE SET NULL;
+          END IF;
+        END
+        $c$;
+      `)
+      .catch((e: unknown) => {
+        const err = e as { code?: string; message?: string };
+        if (err.message?.includes('already exists')) return;
+        throw e;
+      });
+  } finally {
+    await client.end();
+  }
+}
+
 async function bootstrap() {
   try {
     await migrateGoalMetricToLog();
@@ -246,6 +342,12 @@ async function bootstrap() {
     await migrateLogTaskCategory();
   } catch (e) {
     console.warn('[migrate] Log/task category column skipped or failed:', (e as Error).message);
+  }
+
+  try {
+    await migrateHabits();
+  } catch (e) {
+    console.warn('[migrate] Habits migration skipped or failed:', (e as Error).message);
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

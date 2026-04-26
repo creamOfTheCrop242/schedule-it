@@ -11,6 +11,7 @@ import { LogsModule } from './logs/logs.module';
 import { GoalsModule } from './goals/goals.module';
 import { TasksModule } from './tasks/tasks.module';
 import { CategoriesModule } from './categories/categories.module';
+import { HabitsModule } from './habits/habits.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CategoriesModule } from './categories/categories.module';
     GoalsModule,
     TasksModule,
     CategoriesModule,
+    HabitsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

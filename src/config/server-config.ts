@@ -6,6 +6,7 @@ import { Log } from 'src/logs/entities/log.entity';
 import { GoalDefinition } from 'src/goals/entities/goal-definition.entity';
 import { GoalProgress } from 'src/goals/entities/goal-progress.entity';
 import { Task } from 'src/tasks/entities/task.entity';
+import { Habit } from 'src/habits/entities/habit.entity';
 
 function getDbConfig() {
   // Heroku Postgres and most cloud DBs require SSL. Default to SSL in production when using DATABASE_URL.
@@ -38,6 +39,7 @@ export const serverConfig: TypeOrmModuleOptions = {
     GoalDefinition,
     GoalProgress,
     Task,
+    Habit,
   ],
   synchronize: process.env.NODE_ENV !== 'production',
 };

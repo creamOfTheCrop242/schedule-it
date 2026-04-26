@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsUUID, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsDateString,
+  ValidateIf,
+} from 'class-validator';
 
 export interface LogDto {
   id: string;
@@ -52,6 +58,10 @@ export class CreateLogDto {
   @IsOptional()
   @IsUUID()
   dependencyLogId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  habitId?: string;
 }
 
 export class UpdateLogDto {
@@ -90,4 +100,12 @@ export class UpdateLogDto {
   @IsOptional()
   @IsUUID()
   dependencyLogId?: string;
+
+  /** Omit to leave unchanged; `null` or `""` clears the habit link. */
+  @IsOptional()
+  @ValidateIf(
+    (_, v) => v !== undefined && v !== null && v !== '',
+  )
+  @IsUUID()
+  habitId?: string | null;
 }

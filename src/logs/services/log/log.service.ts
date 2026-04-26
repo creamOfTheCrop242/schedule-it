@@ -17,6 +17,7 @@ import { CreateLogDto, UpdateLogDto } from 'src/logs/models/logs.model';
 import { GoalsService } from 'src/goals/services/goals.service';
 import { GoalMetric } from 'src/goals/goals.model';
 import { Task } from 'src/tasks/entities/task.entity';
+import { HabitsService } from 'src/habits/habits.service';
 
 @Injectable()
 export class LogService {
@@ -28,10 +29,11 @@ export class LogService {
     private readonly jwtService: JwtService,
     private readonly accountService: AccountService,
     private readonly goalsService: GoalsService,
+    private readonly habitsService: HabitsService,
   ) {}
 
   async create(createLogDto: CreateLogDto, accountId: string): Promise<Log> {
-    const { dependencyLogId, category, ...rest } = createLogDto;
+    const { dependencyLogId, category, habitId, ...rest } = createLogDto;
     const categoryNorm =
       category !== undefined && category !== null && String(category).trim() !== ''
         ? String(category).trim()
@@ -56,11 +58,17 @@ export class LogService {
       }
     }
 
+    const habit = await this.habitsService.resolveHabitForWrite(
+      habitId,
+      accountId,
+    );
+
     const log = this.logRepository.create({
       ...rest,
       category: categoryNorm,
       account,
       dependencyLog,
+      habit,
     });
 
     if (!log.completedDate) {
@@ -355,7 +363,7 @@ export class LogService {
     }
     const log = await this.logRepository.findOne({
       where: { id, account: { id: accountIdNum } },
-      relations: ['account', 'dependencyLog', 'notes'],
+      relations: ['account', 'dependencyLog', 'notes', 'habit'],
       withDeleted: false,
     });
     if (!log) {
@@ -396,6 +404,19 @@ export class LogService {
     if (updateLogDto.category !== undefined) {
       const c = updateLogDto.category?.trim();
       log.category = c && c.length > 0 ? c : null;
+    }
+
+    if (updateLogDto.habitId !== undefined) {
+      const raw = updateLogDto.habitId;
+      if (raw === null || raw === '') {
+        log.habit = null;
+      } else {
+        const habit = await this.habitsService.resolveHabitForWrite(
+          raw,
+          accountId,
+        );
+        log.habit = habit;
+      }
     }
 
     if (updateLogDto.dependencyLogId !== undefined) {

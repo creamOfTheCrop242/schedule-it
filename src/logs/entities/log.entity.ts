@@ -1,4 +1,5 @@
 import { Account } from 'src/accounts/entities/account.entity';
+import { Habit } from 'src/habits/entities/habit.entity';
 import { Note } from 'src/notes/entities/note.entity';
 import {
   Entity,
@@ -52,6 +53,10 @@ export class Log {
   @ManyToOne(() => Account, (account) => account.logs, { nullable: false })
   @JoinColumn({ name: 'accountId' })
   account: Account;
+
+  @ManyToOne(() => Habit, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'habitId' })
+  habit: Habit | null;
 
   @CreateDateColumn({ type: 'timestamptz', default: () => 'NOW()' })
   createdAt: Date;
