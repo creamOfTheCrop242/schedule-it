@@ -1,4 +1,5 @@
 import { Note } from 'src/notes/entities/note.entity';
+import { Habit } from 'src/habits/entities/habit.entity';
 import { Log } from 'src/logs/entities/log.entity';
 import { Task } from 'src/tasks/entities/task.entity';
 import {
@@ -45,6 +46,9 @@ export class Account {
   @OneToMany(() => Task, (task) => task.account)
   tasks: Task[];
 
+  @OneToMany(() => Habit, (habit) => habit.account)
+  habits: Habit[];
+
   @OneToMany(() => Note, (note) => note.log)
   notes: Note[];
 
@@ -53,9 +57,6 @@ export class Account {
 
   // @OneToMany(() => Reminder, (reminder) => reminder.account)
   // reminders: Reminder[];
-
-  // @OneToMany(() => Habit, (habit) => habit.account)
-  // habits: Habit[];
 
   // @OneToMany(() => HabitTracker, (habitTracker) => habitTracker.account)
   // habitTrackers: HabitTracker[];

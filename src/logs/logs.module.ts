@@ -7,9 +7,15 @@ import { LogService } from './services/log/log.service';
 import { Task } from 'src/tasks/entities/task.entity';
 import { JwtService } from '@nestjs/jwt';
 import { GoalsModule } from 'src/goals/goals.module';
+import { HabitsModule } from 'src/habits/habits.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Log, Task]), AccountModule, GoalsModule],
+  imports: [
+    TypeOrmModule.forFeature([Log, Task]),
+    AccountModule,
+    GoalsModule,
+    HabitsModule,
+  ],
   controllers: [LogController],
   providers: [LogService, JwtService],
   exports: [LogService],

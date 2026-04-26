@@ -13,6 +13,7 @@ import { AccountService } from 'src/accounts/services/account/account.service';
 import { CreateLogDto } from 'src/logs/models/logs.model';
 import { LogService } from 'src/logs/services/log/log.service';
 import { Task } from 'src/tasks/entities/task.entity';
+import { HabitsService } from 'src/habits/habits.service';
 import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
 
 export type TaskListFilters = {
@@ -32,6 +33,7 @@ export class TasksService {
     private readonly taskRepository: Repository<Task>,
     private readonly accountService: AccountService,
     private readonly logService: LogService,
+    private readonly habitsService: HabitsService,
   ) {}
 
   private accountIdNum(accountId: string): number {
@@ -135,10 +137,16 @@ export class TasksService {
         ? String(dto.category).trim()
         : null;
 
+    const habit = await this.habitsService.resolveHabitForWrite(
+      dto.habitId,
+      accountId,
+    );
+
     const task = this.taskRepository.create({
       title: dto.title,
       description: dto.description ?? null,
       category: categoryNorm,
+      habit,
       account,
       completedDate: null,
       log: null,
@@ -185,6 +193,7 @@ export class TasksService {
     const fullQb = this.taskRepository
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.log', 'log')
+      .leftJoinAndSelect('task.habit', 'habit')
       .where('task.id IN (:...ids)', { ids });
 
     const entities = await fullQb.getMany();
@@ -199,7 +208,7 @@ export class TasksService {
     const accountIdNum = this.accountIdNum(accountId);
     const task = await this.taskRepository.findOne({
       where: { id, account: { id: accountIdNum } },
-      relations: ['log'],
+      relations: ['log', 'habit'],
     });
     if (!task) {
       throw new NotFoundException(`Task ${id} not found`);
@@ -222,6 +231,17 @@ export class TasksService {
     if (dto.category !== undefined) {
       const c = dto.category?.trim();
       task.category = c && c.length > 0 ? c : null;
+    }
+    if (dto.habitId !== undefined) {
+      const raw = dto.habitId;
+      if (raw === null || raw === '') {
+        task.habit = null;
+      } else {
+        task.habit = await this.habitsService.resolveHabitForWrite(
+          raw,
+          accountId,
+        );
+      }
     }
     return this.taskRepository.save(task);
   }
@@ -248,6 +268,7 @@ export class TasksService {
       ...(task.category?.trim()
         ? { category: task.category.trim() }
         : {}),
+      ...(task.habit?.id ? { habitId: task.habit.id } : {}),
     };
 
     const savedLog = await this.logService.create(createLogDto, accountId);
