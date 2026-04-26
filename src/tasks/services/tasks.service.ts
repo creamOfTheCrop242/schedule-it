@@ -20,6 +20,7 @@ export type TaskListFilters = {
   timeZone?: string;
   search?: string;
   completion?: string;
+  category?: string;
   limit?: string;
   offset?: string;
 };
@@ -112,6 +113,14 @@ export class TasksService {
         { searchPlain: term, emptyStr: '' },
       );
     }
+
+    const cat = filters.category?.trim();
+    if (cat) {
+      qb.andWhere(
+        'LOWER(TRIM(task.category)) = LOWER(TRIM(:filterCategory))',
+        { filterCategory: cat },
+      );
+    }
   }
 
   async create(dto: CreateTaskDto, accountId: string): Promise<Task> {
@@ -119,9 +128,17 @@ export class TasksService {
     if (!account) {
       throw new NotFoundException('Account not found');
     }
+    const categoryNorm =
+      dto.category !== undefined &&
+      dto.category !== null &&
+      String(dto.category).trim() !== ''
+        ? String(dto.category).trim()
+        : null;
+
     const task = this.taskRepository.create({
       title: dto.title,
       description: dto.description ?? null,
+      category: categoryNorm,
       account,
       completedDate: null,
       log: null,
@@ -202,6 +219,10 @@ export class TasksService {
     if (dto.description !== undefined) {
       task.description = dto.description ?? null;
     }
+    if (dto.category !== undefined) {
+      const c = dto.category?.trim();
+      task.category = c && c.length > 0 ? c : null;
+    }
     return this.taskRepository.save(task);
   }
 
@@ -224,6 +245,9 @@ export class TasksService {
       name: task.title,
       description: task.description ?? undefined,
       completedDate,
+      ...(task.category?.trim()
+        ? { category: task.category.trim() }
+        : {}),
     };
 
     const savedLog = await this.logService.create(createLogDto, accountId);

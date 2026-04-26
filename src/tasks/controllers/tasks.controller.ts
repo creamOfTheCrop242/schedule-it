@@ -36,6 +36,7 @@ export class TasksController {
     @Query('timeZone') timeZone?: string,
     @Query('search') search?: string | string[],
     @Query('completion') completion?: string | string[],
+    @Query('category') category?: string | string[],
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -44,6 +45,7 @@ export class TasksController {
       timeZone,
       search: TasksController.firstQueryValue(search),
       completion: TasksController.firstQueryValue(completion),
+      category: TasksController.firstQueryValue(category),
       limit,
       offset,
     });

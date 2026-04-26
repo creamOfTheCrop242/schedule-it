@@ -6,6 +6,7 @@ export interface LogDto {
   description?: string;
   surroundings?: string;
   mood?: string;
+  category?: string;
   startTime?: Date;
   endTime?: Date;
   completedDate?: Date;
@@ -31,6 +32,10 @@ export class CreateLogDto {
   @IsOptional()
   @IsString()
   mood?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 
   @IsOptional()
   @IsDateString()
@@ -65,6 +70,10 @@ export class UpdateLogDto {
   @IsOptional()
   @IsString()
   mood?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 
   @IsOptional()
   @IsDateString()

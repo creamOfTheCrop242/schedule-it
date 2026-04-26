@@ -157,6 +157,37 @@ async function migrateLogDropCompletedColumn(): Promise<void> {
   }
 }
 
+/** One-time migration: add shared category column to log and task. */
+async function migrateLogTaskCategory(): Promise<void> {
+  const url = (serverConfig as { url?: string }).url;
+  if (!url) return;
+
+  const client = new Client({
+    connectionString: url,
+    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+  });
+
+  try {
+    await client.connect();
+
+    await client.query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS category text`).catch((e: unknown) => {
+      const err = e as { code?: string };
+      if (err.code === '42701') return;
+      if (err.code === '42P01') return;
+      throw e;
+    });
+
+    await client.query(`ALTER TABLE task ADD COLUMN IF NOT EXISTS category text`).catch((e: unknown) => {
+      const err = e as { code?: string };
+      if (err.code === '42701') return;
+      if (err.code === '42P01') return;
+      throw e;
+    });
+  } finally {
+    await client.end();
+  }
+}
+
 /** One-time migration: drop log.priority (no longer used). */
 async function migrateLogDropPriorityColumn(): Promise<void> {
   const url = (serverConfig as { url?: string }).url;
@@ -209,6 +240,12 @@ async function bootstrap() {
     await migrateLogDropPriorityColumn();
   } catch (e) {
     console.warn('[migrate] Log drop priority column skipped or failed:', (e as Error).message);
+  }
+
+  try {
+    await migrateLogTaskCategory();
+  } catch (e) {
+    console.warn('[migrate] Log/task category column skipped or failed:', (e as Error).message);
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

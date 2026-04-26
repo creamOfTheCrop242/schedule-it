@@ -10,6 +10,7 @@ import { MailService } from './mail/mail.service';
 import { LogsModule } from './logs/logs.module';
 import { GoalsModule } from './goals/goals.module';
 import { TasksModule } from './tasks/tasks.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { TasksModule } from './tasks/tasks.module';
     LogsModule,
     GoalsModule,
     TasksModule,
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
