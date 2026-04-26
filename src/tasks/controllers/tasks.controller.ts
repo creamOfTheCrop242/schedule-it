@@ -36,12 +36,16 @@ export class TasksController {
     @Query('timeZone') timeZone?: string,
     @Query('search') search?: string | string[],
     @Query('completion') completion?: string | string[],
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
     return this.tasksService.findAll(String(req.user.id), {
       completedDate,
       timeZone,
       search: TasksController.firstQueryValue(search),
       completion: TasksController.firstQueryValue(completion),
+      limit,
+      offset,
     });
   }
 
