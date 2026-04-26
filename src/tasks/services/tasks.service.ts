@@ -91,7 +91,7 @@ export class TasksService {
   async complete(id: string, accountId: string): Promise<Task> {
     const task = await this.findOne(id, accountId);
     if (task.log) {
-      return task;
+      return this.findOne(id, accountId);
     }
 
     const completedDate = new Date();
@@ -105,7 +105,8 @@ export class TasksService {
 
     task.log = savedLog;
     task.completedDate = completedDate;
-    return this.taskRepository.save(task);
+    await this.taskRepository.save(task);
+    return this.findOne(id, accountId);
   }
 
   /**
@@ -120,6 +121,7 @@ export class TasksService {
     }
     task.completedDate = null;
     task.log = null;
-    return this.taskRepository.save(task);
+    await this.taskRepository.save(task);
+    return this.findOne(id, accountId);
   }
 }

@@ -16,12 +16,15 @@ import { Log } from 'src/logs/entities/log.entity';
 import { CreateLogDto, UpdateLogDto } from 'src/logs/models/logs.model';
 import { GoalsService } from 'src/goals/services/goals.service';
 import { GoalMetric } from 'src/goals/goals.model';
+import { Task } from 'src/tasks/entities/task.entity';
 
 @Injectable()
 export class LogService {
   constructor(
     @InjectRepository(Log)
     private readonly logRepository: Repository<Log>,
+    @InjectRepository(Task)
+    private readonly taskRepository: Repository<Task>,
     private readonly jwtService: JwtService,
     private readonly accountService: AccountService,
     private readonly goalsService: GoalsService,
@@ -279,14 +282,23 @@ export class LogService {
   }
 
   async findOne(id: string, accountId: string): Promise<Log> {
+    const accountIdNum = parseInt(accountId, 10);
+    if (Number.isNaN(accountIdNum)) {
+      throw new BadRequestException('Invalid account ID');
+    }
     const log = await this.logRepository.findOne({
-      where: { id, account: { id: accountId as unknown as number } },
+      where: { id, account: { id: accountIdNum } },
       relations: ['account', 'dependencyLog', 'notes'],
       withDeleted: false,
     });
     if (!log) {
       throw new NotFoundException(`Log with ID ${id} not found`);
     }
+    const sourceTask = await this.taskRepository.findOne({
+      where: { log: { id }, account: { id: accountIdNum } },
+      select: { id: true, title: true },
+    });
+    Object.assign(log, { sourceTask: sourceTask ?? null });
     return log;
   }
 
