@@ -7,6 +7,7 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -26,7 +27,8 @@ export class Task {
   @Column({ type: 'timestamptz', nullable: true })
   completedDate: Date | null;
 
-  @ManyToOne(() => Log, { nullable: true, onDelete: 'SET NULL' })
+  /** Completion log created from this task (at most one log per task). */
+  @OneToOne(() => Log, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'logId' })
   log: Log | null;
 
