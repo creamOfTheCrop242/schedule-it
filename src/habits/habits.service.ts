@@ -4,12 +4,28 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { AccountService } from 'src/accounts/services/account/account.service';
+import { GoalScope } from 'src/goals/goals.model';
 import { Log } from 'src/logs/entities/log.entity';
 import { Habit } from './entities/habit.entity';
+import {
+  bucketLogTimestampsToPeriodCounts,
+  computeCurrentStreak,
+  computeLongestStreak,
+  DEFAULT_HABIT_TIMEZONE,
+  effectiveLogTimestamp,
+} from './habit-streak.util';
 import { CreateHabitDto, UpdateHabitDto } from './habits.model';
+
+/** API shape for list/detail: lifetime log count plus streak stats (not persisted). */
+export type HabitWithStats = Habit & {
+  /** Total non-deleted logs linked to this habit (never “resets”). */
+  logCount: number;
+  currentStreak: number;
+  longestStreak: number;
+};
 
 @Injectable()
 export class HabitsService {
@@ -53,14 +69,76 @@ export class HabitsService {
     return habit;
   }
 
-  async countLogsForHabit(habitId: string, accountId: string): Promise<number> {
+  private normalizeTimeZone(timeZone?: string): string {
+    const t = timeZone?.trim();
+    return t && t.length > 0 ? t : DEFAULT_HABIT_TIMEZONE;
+  }
+
+  /**
+   * All completion timestamps per habit (same rules as streaks), one query.
+   */
+  private async loadLogTimestampsByHabitId(
+    habitIds: string[],
+    accountId: string,
+  ): Promise<Map<string, Date[]>> {
+    const result = new Map<string, Date[]>();
+    if (habitIds.length === 0) {
+      return result;
+    }
     const accountIdNum = this.accountIdNum(accountId);
-    return this.logRepository.count({
-      where: {
-        habit: { id: habitId },
-        account: { id: accountIdNum },
-        deletedAt: IsNull(),
-      },
+    const rows = await this.logRepository
+      .createQueryBuilder('log')
+      .select('log.habitId', 'habitId')
+      .addSelect('log.completedDate', 'completedDate')
+      .addSelect('log.createdAt', 'createdAt')
+      .where('log.accountId = :accountId', { accountId: accountIdNum })
+      .andWhere('log.deletedAt IS NULL')
+      .andWhere('log.habitId IN (:...habitIds)', { habitIds })
+      .getRawMany();
+
+    for (const row of rows) {
+      const hid = row.habitId as string;
+      const completed = row.completedDate as Date | null;
+      const created = row.createdAt as Date;
+      const at = effectiveLogTimestamp(completed, created);
+      const list = result.get(hid);
+      if (list) {
+        list.push(at);
+      } else {
+        result.set(hid, [at]);
+      }
+    }
+    return result;
+  }
+
+  private enrichHabitsWithStats(
+    habits: Habit[],
+    byHabit: Map<string, Date[]>,
+    timeZone: string,
+  ): HabitWithStats[] {
+    const now = new Date();
+    return habits.map((h) => {
+      const timestamps = byHabit.get(h.id) ?? [];
+      const periodCounts = bucketLogTimestampsToPeriodCounts(
+        h.cadence,
+        timestamps,
+        timeZone,
+      );
+      const logCount = timestamps.length;
+      const currentStreak = computeCurrentStreak(
+        h.cadence,
+        periodCounts,
+        h.targetPerPeriod,
+        now,
+        timeZone,
+      );
+      const longestStreak = computeLongestStreak(
+        h.cadence,
+        periodCounts,
+        h.targetPerPeriod,
+        timeZone,
+      );
+      return { ...h, logCount, currentStreak, longestStreak };
     });
   }
 
@@ -81,25 +159,26 @@ export class HabitsService {
     return this.habitRepository.save(habit);
   }
 
-  async findAll(accountId: string): Promise<(Habit & { logCount: number })[]> {
+  async findAll(accountId: string, timeZone?: string): Promise<HabitWithStats[]> {
+    const tz = this.normalizeTimeZone(timeZone);
     const accountIdNum = this.accountIdNum(accountId);
     const habits = await this.habitRepository.find({
       where: { account: { id: accountIdNum } },
       order: { createdAt: 'DESC' },
     });
-    const withCounts = await Promise.all(
-      habits.map(async (h) => ({
-        ...h,
-        logCount: await this.countLogsForHabit(h.id, accountId),
-      })),
+    const byHabit = await this.loadLogTimestampsByHabitId(
+      habits.map((h) => h.id),
+      accountId,
     );
-    return withCounts;
+    return this.enrichHabitsWithStats(habits, byHabit, tz);
   }
 
   async findOne(
     id: string,
     accountId: string,
-  ): Promise<Habit & { logCount: number }> {
+    timeZone?: string,
+  ): Promise<HabitWithStats> {
+    const tz = this.normalizeTimeZone(timeZone);
     const accountIdNum = this.accountIdNum(accountId);
     const habit = await this.habitRepository.findOne({
       where: { id, account: { id: accountIdNum } },
@@ -107,8 +186,8 @@ export class HabitsService {
     if (!habit) {
       throw new NotFoundException(`Habit ${id} not found`);
     }
-    const logCount = await this.countLogsForHabit(habit.id, accountId);
-    return { ...habit, logCount };
+    const byHabit = await this.loadLogTimestampsByHabitId([habit.id], accountId);
+    return this.enrichHabitsWithStats([habit], byHabit, tz)[0];
   }
 
   async update(
@@ -128,6 +207,12 @@ export class HabitsService {
     if (dto.description !== undefined) {
       const d = dto.description === null ? '' : String(dto.description).trim();
       habit.description = d.length > 0 ? d : null;
+    }
+    if (dto.cadence !== undefined) {
+      habit.cadence = dto.cadence;
+    }
+    if (dto.targetPerPeriod !== undefined && dto.targetPerPeriod !== null) {
+      habit.targetPerPeriod = Math.max(1, Math.floor(dto.targetPerPeriod));
     }
     return this.habitRepository.save(habit);
   }

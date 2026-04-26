@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -29,16 +30,20 @@ export class HabitsController {
   }
 
   @Get()
-  findAll(@Req() req: Request & { user: { id: string | number } }) {
-    return this.habitsService.findAll(String(req.user.id));
+  findAll(
+    @Req() req: Request & { user: { id: string | number } },
+    @Query('timeZone') timeZone?: string,
+  ) {
+    return this.habitsService.findAll(String(req.user.id), timeZone);
   }
 
   @Get(':id')
   findOne(
     @Param('id') id: string,
     @Req() req: Request & { user: { id: string | number } },
+    @Query('timeZone') timeZone?: string,
   ) {
-    return this.habitsService.findOne(id, String(req.user.id));
+    return this.habitsService.findOne(id, String(req.user.id), timeZone);
   }
 
   @Patch(':id')
