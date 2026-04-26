@@ -29,6 +29,10 @@ export class Log {
   @Column({ type: 'text', nullable: true })
   mood: string | null;
 
+  /** Shared label with tasks; optional taxonomy for filtering. */
+  @Column({ type: 'text', nullable: true })
+  category: string | null;
+
   @Column({ type: 'timestamptz', nullable: true })
   startTime: Date | null;
 

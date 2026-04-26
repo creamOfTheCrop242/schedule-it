@@ -8,6 +8,10 @@ export class CreateTaskDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 }
 
 export class UpdateTaskDto {
@@ -19,4 +23,8 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 }

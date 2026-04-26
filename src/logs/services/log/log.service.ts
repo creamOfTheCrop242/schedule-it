@@ -31,7 +31,11 @@ export class LogService {
   ) {}
 
   async create(createLogDto: CreateLogDto, accountId: string): Promise<Log> {
-    const { dependencyLogId, ...rest } = createLogDto;
+    const { dependencyLogId, category, ...rest } = createLogDto;
+    const categoryNorm =
+      category !== undefined && category !== null && String(category).trim() !== ''
+        ? String(category).trim()
+        : null;
 
     const account = await this.accountService.findAccountById(accountId);
     if (!account) {
@@ -54,6 +58,7 @@ export class LogService {
 
     const log = this.logRepository.create({
       ...rest,
+      category: categoryNorm,
       account,
       dependencyLog,
     });
@@ -177,6 +182,19 @@ export class LogService {
     });
   }
 
+  private applyCategoryEqualsFilter(
+    qb: SelectQueryBuilder<Log>,
+    category?: string,
+  ): void {
+    const c = category?.trim();
+    if (!c) {
+      return;
+    }
+    qb.andWhere('LOWER(TRIM(log.category)) = LOWER(TRIM(:filterCategory))', {
+      filterCategory: c,
+    });
+  }
+
   private normalizeListRequest(request: {
     completedDate?: string;
     status?: string;
@@ -246,12 +264,13 @@ export class LogService {
       accountId?: string;
       timeZone?: string;
       mood?: string;
+      category?: string;
       search?: string;
       limit?: string;
       offset?: string;
     } = {},
   ): Promise<Log[]> {
-    const { mood, search, limit, offset, ...rest } = request;
+    const { mood, category, search, limit, offset, ...rest } = request;
     const normalized = this.normalizeListRequest(rest);
     if (!normalized) {
       return [];
@@ -272,6 +291,7 @@ export class LogService {
     );
     this.applySearchSubstringFilter(idQb, search);
     this.applyMoodEqualsFilter(idQb, mood);
+    this.applyCategoryEqualsFilter(idQb, category);
     this.applyListOrderBy(idQb, completedDate, timeZone, status);
     idQb.take(take).skip(skip);
 
@@ -373,6 +393,10 @@ export class LogService {
     if (updateLogDto.surroundings !== undefined)
       log.surroundings = updateLogDto.surroundings ?? null;
     if (updateLogDto.mood !== undefined) log.mood = updateLogDto.mood ?? null;
+    if (updateLogDto.category !== undefined) {
+      const c = updateLogDto.category?.trim();
+      log.category = c && c.length > 0 ? c : null;
+    }
 
     if (updateLogDto.dependencyLogId !== undefined) {
       if (updateLogDto.dependencyLogId) {

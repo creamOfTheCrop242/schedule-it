@@ -24,6 +24,10 @@ export class Task {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  /** Shared label with logs; optional taxonomy for filtering. */
+  @Column({ type: 'text', nullable: true })
+  category: string | null;
+
   @Column({ type: 'timestamptz', nullable: true })
   completedDate: Date | null;
 
