@@ -1,4 +1,13 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
+
+import { GoalScope } from 'src/goals/goals.model';
 
 export class CreateHabitDto {
   @IsString()
@@ -8,6 +17,15 @@ export class CreateHabitDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsEnum(GoalScope)
+  cadence?: GoalScope;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  targetPerPeriod?: number;
 }
 
 export class UpdateHabitDto {
@@ -19,4 +37,13 @@ export class UpdateHabitDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsEnum(GoalScope)
+  cadence?: GoalScope;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  targetPerPeriod?: number;
 }

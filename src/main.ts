@@ -302,6 +302,26 @@ async function migrateHabits(): Promise<void> {
         if (err.message?.includes('already exists')) return;
         throw e;
       });
+
+    await client
+      .query(
+        `ALTER TABLE habit ADD COLUMN IF NOT EXISTS cadence text NOT NULL DEFAULT 'DAY'`,
+      )
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P01') return;
+        throw e;
+      });
+
+    await client
+      .query(
+        `ALTER TABLE habit ADD COLUMN IF NOT EXISTS "targetPerPeriod" integer NOT NULL DEFAULT 1`,
+      )
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P01') return;
+        throw e;
+      });
   } finally {
     await client.end();
   }
