@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -29,8 +30,28 @@ export class TasksController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@Req() req: Request & { user: { id: string | number } }) {
-    return this.tasksService.findAll(String(req.user.id));
+  findAll(
+    @Req() req: Request & { user: { id: string | number } },
+    @Query('completedDate') completedDate?: string,
+    @Query('timeZone') timeZone?: string,
+    @Query('search') search?: string | string[],
+    @Query('completion') completion?: string | string[],
+  ) {
+    return this.tasksService.findAll(String(req.user.id), {
+      completedDate,
+      timeZone,
+      search: TasksController.firstQueryValue(search),
+      completion: TasksController.firstQueryValue(completion),
+    });
+  }
+
+  private static firstQueryValue(
+    value: string | string[] | undefined,
+  ): string | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+    return Array.isArray(value) ? value[0] : value;
   }
 
   @Post(':id/complete')

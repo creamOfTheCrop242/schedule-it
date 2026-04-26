@@ -1,16 +1,26 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { addDays } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 
 import { AccountService } from 'src/accounts/services/account/account.service';
 import { CreateLogDto } from 'src/logs/models/logs.model';
 import { LogService } from 'src/logs/services/log/log.service';
 import { Task } from 'src/tasks/entities/task.entity';
 import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
+
+export type TaskListFilters = {
+  completedDate?: string;
+  timeZone?: string;
+  search?: string;
+  completion?: string;
+};
 
 @Injectable()
 export class TasksService {
@@ -29,6 +39,18 @@ export class TasksService {
     return n;
   }
 
+  /** Same local-calendar-day → UTC window as log list filtering. */
+  private getUtcRangeFromLocalDate(
+    localDateStr: string,
+    timezone: string,
+  ): { startUtc: Date; endUtc: Date } {
+    const [year, month, day] = localDateStr.split('-').map(Number);
+    const naiveDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const startUtc = fromZonedTime(naiveDate, timezone);
+    const endUtc = addDays(startUtc, 1);
+    return { startUtc, endUtc };
+  }
+
   async create(dto: CreateTaskDto, accountId: string): Promise<Task> {
     const account = await this.accountService.findAccountById(accountId);
     if (!account) {
@@ -44,13 +66,53 @@ export class TasksService {
     return this.taskRepository.save(task);
   }
 
-  async findAll(accountId: string): Promise<Task[]> {
+  async findAll(
+    accountId: string,
+    filters: TaskListFilters = {},
+  ): Promise<Task[]> {
     const accountIdNum = this.accountIdNum(accountId);
-    return this.taskRepository.find({
-      where: { account: { id: accountIdNum } },
-      relations: ['log'],
-      order: { createdAt: 'DESC' },
-    });
+    const completion = filters.completion?.trim().toLowerCase();
+    if (completion && completion !== 'open' && completion !== 'done') {
+      throw new BadRequestException(
+        'Invalid completion; use open, done, or omit for all.',
+      );
+    }
+
+    const qb = this.taskRepository
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.log', 'log')
+      .where('task.accountId = :accountId', { accountId: accountIdNum })
+      .andWhere('task.deletedAt IS NULL');
+
+    const { completedDate, timeZone } = filters;
+    if (completedDate?.trim() && timeZone?.trim()) {
+      const { startUtc, endUtc } = this.getUtcRangeFromLocalDate(
+        completedDate.trim(),
+        timeZone.trim(),
+      );
+      qb.andWhere(
+        '((task.completedDate >= :startUtc AND task.completedDate < :endUtc) OR (task.completedDate IS NULL AND task.createdAt >= :startUtc AND task.createdAt < :endUtc))',
+        { startUtc, endUtc },
+      );
+    }
+
+    if (completion === 'open') {
+      qb.andWhere('task.completedDate IS NULL');
+    } else if (completion === 'done') {
+      qb.andWhere('task.completedDate IS NOT NULL');
+    }
+
+    const term = filters.search?.trim();
+    if (term) {
+      qb.andWhere(
+        '(STRPOS(LOWER(COALESCE(task.title, :emptyStr)), LOWER(:searchPlain)) > 0 OR STRPOS(LOWER(COALESCE(task.description, :emptyStr)), LOWER(:searchPlain)) > 0)',
+        { searchPlain: term, emptyStr: '' },
+      );
+    }
+
+    qb.orderBy('COALESCE(task.completedDate, task.createdAt)', 'DESC');
+
+    return qb.getMany();
   }
 
   async findOne(id: string, accountId: string): Promise<Task> {
