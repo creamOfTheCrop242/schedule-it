@@ -127,6 +127,10 @@ export class LogService {
     }
   }
 
+  /**
+   * List ordering. Safe to use with take/skip only when the query has **no joins**
+   * (TypeORM’s join+pagination path mishandles raw ORDER BY and custom select aliases).
+   */
   private applyListOrderBy(
     qb: SelectQueryBuilder<Log>,
     completedDate: string | undefined,
@@ -137,10 +141,10 @@ export class LogService {
       if (completedDate && timeZone) {
         qb.orderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC');
       } else {
-        qb.orderBy('log.completedDate', 'DESC').limit(10);
+        qb.orderBy('log.completedDate', 'DESC');
       }
     } else if (completedDate && timeZone) {
-      qb.addOrderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC');
+      qb.orderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC');
     } else {
       qb.orderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC');
     }
@@ -212,6 +216,29 @@ export class LogService {
     return { accountIdNum, completedDate, timeZone, status };
   }
 
+  private clampPagination(
+    limitRaw?: string,
+    offsetRaw?: string,
+  ): { limit: number; offset: number } {
+    const DEFAULT = 10;
+    const MAX = 50;
+    let limit = DEFAULT;
+    if (limitRaw !== undefined && limitRaw !== '') {
+      const n = parseInt(limitRaw, 10);
+      if (!Number.isNaN(n)) {
+        limit = Math.min(Math.max(1, n), MAX);
+      }
+    }
+    let offset = 0;
+    if (offsetRaw !== undefined && offsetRaw !== '') {
+      const n = parseInt(offsetRaw, 10);
+      if (!Number.isNaN(n)) {
+        offset = Math.max(0, n);
+      }
+    }
+    return { limit, offset };
+  }
+
   async findAll(
     request: {
       completedDate?: string;
@@ -220,32 +247,52 @@ export class LogService {
       timeZone?: string;
       mood?: string;
       search?: string;
+      limit?: string;
+      offset?: string;
     } = {},
   ): Promise<Log[]> {
-    const { mood, search, ...rest } = request;
+    const { mood, search, limit, offset, ...rest } = request;
     const normalized = this.normalizeListRequest(rest);
     if (!normalized) {
       return [];
     }
     const { accountIdNum, completedDate, timeZone, status } = normalized;
+    const { limit: take, offset: skip } = this.clampPagination(limit, offset);
 
-    const queryBuilder = this.logRepository
-      .createQueryBuilder('log')
-      .leftJoinAndSelect('log.dependencyLog', 'dependencyLog')
-      .leftJoinAndSelect('log.notes', 'notes');
-
+    // Paginate on a join-free query so LIMIT/OFFSET + COALESCE order work; then load
+    // relations in a second query (TypeORM’s single-query join pagination breaks on
+    // non-column ORDER BY and on synthetic sort aliases).
+    const idQb = this.logRepository.createQueryBuilder('log');
     this.applySharedListFilters(
-      queryBuilder,
+      idQb,
       accountIdNum,
       completedDate,
       timeZone,
       status,
     );
-    this.applySearchSubstringFilter(queryBuilder, search);
-    this.applyMoodEqualsFilter(queryBuilder, mood);
-    this.applyListOrderBy(queryBuilder, completedDate, timeZone, status);
+    this.applySearchSubstringFilter(idQb, search);
+    this.applyMoodEqualsFilter(idQb, mood);
+    this.applyListOrderBy(idQb, completedDate, timeZone, status);
+    idQb.take(take).skip(skip);
 
-    return queryBuilder.getMany();
+    const pageRows = await idQb.getMany();
+    const ids = pageRows.map((row) => row.id);
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const fullQb = this.logRepository
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.dependencyLog', 'dependencyLog')
+      .leftJoinAndSelect('log.notes', 'notes')
+      .where('log.id IN (:...ids)', { ids });
+
+    const entities = await fullQb.getMany();
+    const orderIndex = new Map(ids.map((id, index) => [id, index]));
+    entities.sort(
+      (a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0),
+    );
+    return entities;
   }
 
   /** Distinct non-null moods for the account matching date + search (not mood). */

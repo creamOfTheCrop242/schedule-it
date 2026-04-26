@@ -38,6 +38,8 @@ export class LogController {
     @Query('timeZone') timeZone?: string,
     @Query('mood') mood?: string | string[],
     @Query('search') search?: string | string[],
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
     return this.logService.findAll({
       completedDate,
@@ -46,6 +48,8 @@ export class LogController {
       timeZone,
       mood: LogController.firstQueryValue(mood),
       search: LogController.firstQueryValue(search),
+      limit,
+      offset,
     });
   }
 
