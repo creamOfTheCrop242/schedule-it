@@ -1,4 +1,11 @@
-import { IsEnum, IsNumber, IsOptional, IsObject, IsDateString } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsObject,
+  IsDateString,
+  Min,
+} from 'class-validator';
 
 // goal-scope.enum.ts
 export enum GoalScope {
@@ -24,6 +31,20 @@ export class UpsertGoalDto {
 
   @IsNumber()
   targetValue: number;
+
+  @IsOptional()
+  @IsObject()
+  filters?: Record<string, any>;
+}
+
+/** Daily-only: server derives week/month/year via fixed multipliers. */
+export class UpsertDailyGoalDto {
+  @IsEnum(GoalMetric)
+  metric: GoalMetric;
+
+  @IsNumber()
+  @Min(1)
+  dailyTargetValue: number;
 
   @IsOptional()
   @IsObject()
