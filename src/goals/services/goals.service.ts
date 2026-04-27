@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { GoalDefinition } from '../entities/goal-definition.entity';
 import { GoalProgress } from '../entities/goal-progress.entity';
 import { GoalMetric, GoalScope } from '../goals.model';
+import { deriveTargetsFromDaily } from '../helpers/goal-derive.helpers';
 import { computePeriod } from '../helpers/goal.helpers';
 
 @Injectable()
@@ -42,6 +43,25 @@ export class GoalsService {
     }
 
     return this.defs.save(def);
+  }
+
+  /**
+   * Daily-only goals: user sets a single daily target and we derive week/month/year
+   * using fixed multipliers (7/30/365). This keeps the existing per-scope progress
+   * model intact by materializing derived goal_definitions rows.
+   */
+  async upsertDailyGoal(
+    accountId: string,
+    metric: GoalMetric,
+    dailyTargetValue: number,
+    filters?: Record<string, any>,
+  ) {
+    const { day, week, month, year } = deriveTargetsFromDaily(dailyTargetValue);
+    await this.upsertGoal(accountId, metric, GoalScope.DAY, day, filters);
+    await this.upsertGoal(accountId, metric, GoalScope.WEEK, week, filters);
+    await this.upsertGoal(accountId, metric, GoalScope.MONTH, month, filters);
+    await this.upsertGoal(accountId, metric, GoalScope.YEAR, year, filters);
+    return { success: true };
   }
 
   // Increment progress for all goals matching user+metric (day/week/month/year)
@@ -165,6 +185,25 @@ export class GoalsService {
       where: { account: { id: parseInt(accountId) }, metric },
       order: { scope: 'ASC' },
     });
+
+    /**
+     * Backfill derived scopes for legacy users who only have a DAY definition.
+     * We keep the materialized model: create WEEK/MONTH/YEAR definitions derived
+     * from the DAY target (×7 / ×30 / ×365) so existing progress logic keeps working.
+     */
+    const have = new Set(defs.map((d) => d.scope));
+    if (have.has(GoalScope.DAY) && (!have.has(GoalScope.WEEK) || !have.has(GoalScope.MONTH) || !have.has(GoalScope.YEAR))) {
+      const dayDef = defs.find((d) => d.scope === GoalScope.DAY);
+      if (dayDef) {
+        const daily = Number(dayDef.targetValue);
+        await this.upsertDailyGoal(accountId, metric, daily, dayDef.filters);
+        const refreshed = await this.defs.find({
+          where: { account: { id: parseInt(accountId) }, metric },
+          order: { scope: 'ASC' },
+        });
+        defs.splice(0, defs.length, ...refreshed);
+      }
+    }
 
     const result = [];
     for (const def of defs) {

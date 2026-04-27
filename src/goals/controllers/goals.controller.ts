@@ -11,6 +11,7 @@ import {
   AddProgressDto,
   GoalMetric,
   SubtractProgressDto,
+  UpsertDailyGoalDto,
   UpsertGoalDto,
 } from '../goals.model';
 import { GoalsService } from '../services/goals.service';
@@ -30,6 +31,19 @@ export class GoalsController {
       body.metric,
       body.scope,
       body.targetValue,
+      body.filters,
+    );
+  }
+
+  /** Daily-only goals: derive week/month/year from the daily target. */
+  @Post('daily')
+  @UseGuards(JwtAuthGuard)
+  async upsertDailyGoal(@Req() req, @Body() body: UpsertDailyGoalDto) {
+    const accountId = req.user.id;
+    return this.goalsService.upsertDailyGoal(
+      accountId,
+      body.metric,
+      body.dailyTargetValue,
       body.filters,
     );
   }
