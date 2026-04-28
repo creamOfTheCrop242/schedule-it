@@ -1,6 +1,15 @@
+import { IsEmail, IsString, MinLength } from 'class-validator';
+
 export class RegisterAccountDto {
+  @IsString()
+  @MinLength(1)
   name: string;
-  email?: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
   password: string;
 }
 
@@ -13,8 +22,12 @@ export interface UpdatePasswordDto {
   password: string;
 }
 
-export interface VerifyEmailDto {
+export class VerifyEmailDto {
+  @IsEmail()
   email: string;
+
+  @IsString()
+  @MinLength(4)
   code: string;
 }
 

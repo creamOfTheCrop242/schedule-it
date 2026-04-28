@@ -36,11 +36,26 @@ export class MailService {
     const requestCopy = { ...request, password: hash };
 
     const verificationCode = this.verificationCode().toString();
-    await this.emailVerificationRepository.save({
-      code: verificationCode,
-      email: request.email,
-      accountDetails: JSON.stringify(requestCopy),
+    const existing = await this.emailVerificationRepository.findOne({
+      where: { email: request.email },
+      withDeleted: true,
     });
+    if (existing) {
+      await this.emailVerificationRepository.save({
+        ...existing,
+        code: verificationCode,
+        verified: false,
+        deletedAt: null,
+        accountDetails: JSON.stringify(requestCopy),
+      });
+    } else {
+      await this.emailVerificationRepository.save({
+        code: verificationCode,
+        email: request.email,
+        verified: false,
+        accountDetails: JSON.stringify(requestCopy),
+      });
+    }
 
     const mailOptions = {
       from: '"Schedule-It" <don@creamofthecrop.tech>', // Sender address
