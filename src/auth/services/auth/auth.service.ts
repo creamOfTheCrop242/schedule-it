@@ -1,13 +1,14 @@
 import { HttpException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
 import * as bcrypt from 'bcrypt';
 import { AccountService } from 'src/accounts/services/account/account.service';
 import {
   AuthLoginRequestDto,
-  AuthStatus,
   ForgotUserNameDto,
 } from 'src/auth/dto/auth.dto';
+import { isFeedbackAdminEmail } from 'src/feedback/feedback-admin.util';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
   constructor(
     private readonly accountService: AccountService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {
     // this.transporter = nodemailer.createTransport({
     //   host: 'smtp.elasticemail.com', // Replace with your SMTP server
@@ -29,8 +31,10 @@ export class AuthService {
 
   async validateToken(token: string) {
     try {
-      this.jwtService.verify(token);
-      return { isLoggedIn: true };
+      const payload = this.jwtService.verify<{ email?: string }>(token);
+      const raw = this.configService.get<string>('FEEDBACK_ADMIN_EMAILS');
+      const isFeedbackAdmin = isFeedbackAdminEmail(payload.email, raw);
+      return { isLoggedIn: true, isFeedbackAdmin };
     } catch (error) {
       console.error('Token verification failed:', error.message);
       throw new HttpException('Invalid Token', 401);

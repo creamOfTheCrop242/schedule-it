@@ -12,6 +12,7 @@ import { GoalsModule } from './goals/goals.module';
 import { TasksModule } from './tasks/tasks.module';
 import { CategoriesModule } from './categories/categories.module';
 import { HabitsModule } from './habits/habits.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { HabitsModule } from './habits/habits.module';
     TasksModule,
     CategoriesModule,
     HabitsModule,
+    FeedbackModule,
   ],
   controllers: [AppController],
   providers: [AppService],
