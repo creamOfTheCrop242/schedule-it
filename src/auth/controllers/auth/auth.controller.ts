@@ -21,6 +21,7 @@ import { AccountService } from 'src/accounts/services/account/account.service';
 import { AuthenticatedLoginRequest } from 'src/auth/dto/auth.dto';
 
 import { LocalAuthGuard } from 'src/auth/guards/local.guard';
+import { JWT_ACCESS_TOKEN_TTL_SECONDS } from 'src/auth/constants/constants';
 import { AuthService } from 'src/auth/services/auth/auth.service';
 import { MailService } from 'src/mail/mail.service';
 
@@ -43,7 +44,7 @@ export class AuthController {
       secure: isProduction, // true in production, false in dev
       sameSite: 'lax' as const, // Works for same-domain
       path: '/',
-      maxAge: 60 * 60 * 1000, // 1 hour
+      maxAge: JWT_ACCESS_TOKEN_TTL_SECONDS * 1000,
     };
   }
 

@@ -2,7 +2,10 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AccountModule } from 'src/accounts/account.module';
-import { jwtConstants } from './constants/constants';
+import {
+  jwtConstants,
+  JWT_ACCESS_TOKEN_TTL_SECONDS,
+} from './constants/constants';
 import { AuthController } from './controllers/auth/auth.controller';
 import { AuthService } from './services/auth/auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -20,7 +23,7 @@ import { FacebookStrategy } from './strategies/facebook.strategy';
     TypeOrmModule.forFeature([EmailVerification]),
     JwtModule.register({
       secret: jwtConstants.secret,
-      signOptions: { expiresIn: '30m' },
+      signOptions: { expiresIn: JWT_ACCESS_TOKEN_TTL_SECONDS },
     }),
     AccountModule,
     HttpModule,
