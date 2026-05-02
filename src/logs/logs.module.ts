@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountModule } from 'src/accounts/account.module';
 import { LogController } from './controllers/logs/logs.controller';
 import { Log } from './entities/log.entity';
+import { LogInsightsService } from './services/log-insights/log-insights.service';
 import { LogService } from './services/log/log.service';
 import { Task } from 'src/tasks/entities/task.entity';
 import { JwtService } from '@nestjs/jwt';
@@ -17,7 +18,7 @@ import { HabitsModule } from 'src/habits/habits.module';
     HabitsModule,
   ],
   controllers: [LogController],
-  providers: [LogService, JwtService],
+  providers: [LogService, LogInsightsService, JwtService],
   exports: [LogService],
 })
 export class LogsModule {}
