@@ -14,12 +14,14 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.auth.guard';
 import { CreateLogDto, UpdateLogDto } from 'src/logs/models/logs.model';
+import { LogInsightsService } from 'src/logs/services/log-insights/log-insights.service';
 import { LogService } from 'src/logs/services/log/log.service';
 
 @Controller('logs')
 export class LogController {
   constructor(
     private readonly logService: LogService,
+    private readonly logInsightsService: LogInsightsService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -75,6 +77,27 @@ export class LogController {
       status,
       accountId: String(req.user.id),
       timeZone,
+      search: LogController.firstQueryValue(search),
+    });
+  }
+
+  @Get('ai-summary')
+  @UseGuards(JwtAuthGuard)
+  getAiSummary(
+    @Req() req: Request & { user: { id: string | number } },
+    @Query('completedDate') completedDate?: string,
+    @Query('status') status?: string,
+    @Query('timeZone') timeZone?: string,
+    @Query('mood') mood?: string | string[],
+    @Query('category') category?: string | string[],
+    @Query('search') search?: string | string[],
+  ) {
+    return this.logInsightsService.summarize(String(req.user.id), {
+      completedDate,
+      status,
+      timeZone,
+      mood: LogController.firstQueryValue(mood),
+      category: LogController.firstQueryValue(category),
       search: LogController.firstQueryValue(search),
     });
   }
