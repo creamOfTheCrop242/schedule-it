@@ -43,12 +43,12 @@ export class DailyMotivationService {
   }
 
   private async generateAndStore(date: string): Promise<string> {
-    const story = await this.fetchFromOpenAI();
+    const story = await this.fetchFromOpenAI(date);
     this.storyByUtcDay.set(date, story);
     return story;
   }
 
-  private async fetchFromOpenAI(): Promise<string> {
+  private async fetchFromOpenAI(date: string): Promise<string> {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY')?.trim();
     if (!apiKey) {
       throw new ServiceUnavailableException(
@@ -64,7 +64,7 @@ export class DailyMotivationService {
       const response = await client.responses.create({
         model,
         instructions: DailyMotivationService.instructions(),
-        input: DailyMotivationService.userPrompt(),
+        input: DailyMotivationService.userPrompt(date),
       });
       const text = response.output_text?.trim();
       if (!text) {
@@ -89,11 +89,10 @@ export class DailyMotivationService {
       'Channel the direct, repetitive, action-first energy associated with',
       'David Goggins and Jocko Willink — but do not claim to be either person,',
       'do not impersonate them, and do not use slurs or harassment.',
-      'Tell a true or very well-known public story of someone who faced long odds',
-      'and succeeded. Subjects must span all of human history — ancient through modern,',
-      'every region and civilization (not only recent Western figures): rulers, scholars,',
-      'warriors, artists, inventors, explorers, reformers, athletes, activists, and others.',
-      'Rotate eras and geographies across days; do not default to the same century or culture.',
+      'Tell a public story of someone who faced long odds and succeeded.',
+      'The user message assigns one broad geography for that UTC calendar day (deterministic rotation).',
+      'Honor that geography for the protagonist’s primary setting and cultural context; vary era within it.',
+      'Figures may include rulers, scholars, warriors, artists, inventors, explorers, reformers, athletes, activists, and others.',
       'Keep it between 250 and 400 words. Plain text only — no markdown code fences,',
       'no bullet lists unless essential. Short paragraphs.',
       'End with one blunt takeaway sentence the reader can apply today.',
@@ -101,11 +100,34 @@ export class DailyMotivationService {
     ].join(' ');
   }
 
-  private static userPrompt(): string {
-    return (
-      'Write today’s piece. Choose one well-documented overcoming-the-odds story from ' +
-      'any era of human history (ancient through present), any part of the world. ' +
-      'Avoid repeating the same narrow type of figure or time period as generic daily picks.'
-    );
+  /** Stable hash from YYYY-MM-DD so each day maps to a broad world region (reduces model default skew). */
+  static broadGeographyForUtcDate(date: string): string {
+    // Order matters for consecutive UTC days (h % 7 drifts by one): keep the two
+    // “Asian” buckets non-adjacent so readers rarely get South Asia then East Asia back-to-back.
+    const regions = [
+      'Africa',
+      'the Americas (North, Central, South, or the Caribbean)',
+      'Europe',
+      'the Middle East, North Africa, or Central Asia',
+      'South Asia',
+      'Oceania or the Pacific Islands',
+      'East or Southeast Asia',
+    ];
+    let h = 0;
+    for (let i = 0; i < date.length; i++) {
+      h = (h * 31 + date.charCodeAt(i)) >>> 0;
+    }
+    return regions[h % regions.length];
+  }
+
+  private static userPrompt(date: string): string {
+    const geography = DailyMotivationService.broadGeographyForUtcDate(date);
+    return [
+      `Write today's piece for UTC calendar date ${date}.`,
+      `Required geography for this day: **${geography}**.`,
+      'Choose one well-documented overcoming-the-odds story (ancient through present) whose protagonist is',
+      'primarily associated with that region — diaspora is fine if the arc is clearly rooted there.',
+      'Pick a distinct era and figure type when you can; avoid the most overused global-meme picks.',
+    ].join(' ');
   }
 }

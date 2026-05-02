@@ -56,4 +56,14 @@ describe('DailyMotivationService', () => {
     expect(first.date).toBe(second.date);
     expect(createMock).toHaveBeenCalledTimes(1);
   });
+
+  it('passes a date-seeded geography into the model input', async () => {
+    const svc = await createService();
+    const date = DailyMotivationService.utcDateKey(new Date());
+    const geography = DailyMotivationService.broadGeographyForUtcDate(date);
+    await svc.getDailyMotivation();
+    const input = createMock.mock.calls[0][0].input as string;
+    expect(input).toContain(`UTC calendar date ${date}`);
+    expect(input).toContain(geography);
+  });
 });
