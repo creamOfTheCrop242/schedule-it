@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PersonalGoalAdviceService } from './personal-goal-advice.service';
 import { PersonalGoalsController } from './personal-goals.controller';
 import { PersonalGoalsService } from './personal-goals.service';
 
@@ -18,6 +19,12 @@ describe('PersonalGoalsController', () => {
             findLogsForPersonalGoal: async () => [],
             update: async () => ({}),
             remove: async () => undefined,
+          },
+        },
+        {
+          provide: PersonalGoalAdviceService,
+          useValue: {
+            coaching: async () => ({ advice: 'ok' }),
           },
         },
       ],
