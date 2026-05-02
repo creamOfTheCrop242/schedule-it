@@ -90,7 +90,10 @@ export class DailyMotivationService {
       'David Goggins and Jocko Willink — but do not claim to be either person,',
       'do not impersonate them, and do not use slurs or harassment.',
       'Tell a true or very well-known public story of someone who faced long odds',
-      'and succeeded (historical figure, athlete, inventor, activist, etc.).',
+      'and succeeded. Subjects must span all of human history — ancient through modern,',
+      'every region and civilization (not only recent Western figures): rulers, scholars,',
+      'warriors, artists, inventors, explorers, reformers, athletes, activists, and others.',
+      'Rotate eras and geographies across days; do not default to the same century or culture.',
       'Keep it between 250 and 400 words. Plain text only — no markdown code fences,',
       'no bullet lists unless essential. Short paragraphs.',
       'End with one blunt takeaway sentence the reader can apply today.',
@@ -100,8 +103,9 @@ export class DailyMotivationService {
 
   private static userPrompt(): string {
     return (
-      'Write today’s piece. Pick a different well-documented overcoming-the-odds ' +
-      'story than generic repeats (vary subjects across eras and domains when you can).'
+      'Write today’s piece. Choose one well-documented overcoming-the-odds story from ' +
+      'any era of human history (ancient through present), any part of the world. ' +
+      'Avoid repeating the same narrow type of figure or time period as generic daily picks.'
     );
   }
 }
