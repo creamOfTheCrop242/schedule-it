@@ -16,6 +16,10 @@ export class CreateTaskDto {
   @IsOptional()
   @IsUUID()
   habitId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  personalGoalId?: string;
 }
 
 export class UpdateTaskDto {
@@ -39,4 +43,12 @@ export class UpdateTaskDto {
   )
   @IsUUID()
   habitId?: string | null;
+
+  /** Omit to leave unchanged; `null` or `""` clears the personal goal link. */
+  @IsOptional()
+  @ValidateIf(
+    (_, v) => v !== undefined && v !== null && v !== '',
+  )
+  @IsUUID()
+  personalGoalId?: string | null;
 }

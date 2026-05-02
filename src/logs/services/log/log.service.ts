@@ -18,6 +18,7 @@ import { GoalsService } from 'src/goals/services/goals.service';
 import { GoalMetric } from 'src/goals/goals.model';
 import { Task } from 'src/tasks/entities/task.entity';
 import { HabitsService } from 'src/habits/habits.service';
+import { PersonalGoalsService } from 'src/personal-goals/personal-goals.service';
 
 @Injectable()
 export class LogService {
@@ -30,10 +31,12 @@ export class LogService {
     private readonly accountService: AccountService,
     private readonly goalsService: GoalsService,
     private readonly habitsService: HabitsService,
+    private readonly personalGoalsService: PersonalGoalsService,
   ) {}
 
   async create(createLogDto: CreateLogDto, accountId: string): Promise<Log> {
-    const { dependencyLogId, category, habitId, ...rest } = createLogDto;
+    const { dependencyLogId, category, habitId, personalGoalId, ...rest } =
+      createLogDto;
     const categoryNorm =
       category !== undefined && category !== null && String(category).trim() !== ''
         ? String(category).trim()
@@ -63,12 +66,19 @@ export class LogService {
       accountId,
     );
 
+    const personalGoal =
+      await this.personalGoalsService.resolvePersonalGoalForWrite(
+        personalGoalId,
+        accountId,
+      );
+
     const log = this.logRepository.create({
       ...rest,
       category: categoryNorm,
       account,
       dependencyLog,
       habit,
+      personalGoal,
     });
 
     if (!log.completedDate) {
@@ -313,6 +323,8 @@ export class LogService {
       .createQueryBuilder('log')
       .leftJoinAndSelect('log.dependencyLog', 'dependencyLog')
       .leftJoinAndSelect('log.notes', 'notes')
+      .leftJoinAndSelect('log.habit', 'habit')
+      .leftJoinAndSelect('log.personalGoal', 'personalGoal')
       .where('log.id IN (:...ids)', { ids });
 
     const entities = await fullQb.getMany();
@@ -363,7 +375,7 @@ export class LogService {
     }
     const log = await this.logRepository.findOne({
       where: { id, account: { id: accountIdNum } },
-      relations: ['account', 'dependencyLog', 'notes', 'habit'],
+      relations: ['account', 'dependencyLog', 'notes', 'habit', 'personalGoal'],
       withDeleted: false,
     });
     if (!log) {
@@ -416,6 +428,19 @@ export class LogService {
           accountId,
         );
         log.habit = habit;
+      }
+    }
+
+    if (updateLogDto.personalGoalId !== undefined) {
+      const raw = updateLogDto.personalGoalId;
+      if (raw === null || raw === '') {
+        log.personalGoal = null;
+      } else {
+        log.personalGoal =
+          await this.personalGoalsService.resolvePersonalGoalForWrite(
+            raw,
+            accountId,
+          );
       }
     }
 

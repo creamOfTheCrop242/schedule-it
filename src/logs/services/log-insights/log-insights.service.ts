@@ -137,6 +137,11 @@ export class LogInsightsService {
         lines.push(`Habit: ${LogInsightsService.clip(habitName)}`);
       }
 
+      const pgTitle = log.personalGoal?.title;
+      if (pgTitle) {
+        lines.push(`Personal goal: ${LogInsightsService.clip(pgTitle)}`);
+      }
+
       const notes = log.notes ?? [];
       if (notes.length > 0) {
         lines.push('Notes:');

@@ -9,6 +9,7 @@ import { Task } from 'src/tasks/entities/task.entity';
 import { JwtService } from '@nestjs/jwt';
 import { GoalsModule } from 'src/goals/goals.module';
 import { HabitsModule } from 'src/habits/habits.module';
+import { PersonalGoalsModule } from 'src/personal-goals/personal-goals.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { HabitsModule } from 'src/habits/habits.module';
     AccountModule,
     GoalsModule,
     HabitsModule,
+    PersonalGoalsModule,
   ],
   controllers: [LogController],
   providers: [LogService, LogInsightsService, JwtService],

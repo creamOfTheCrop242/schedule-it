@@ -62,6 +62,10 @@ export class CreateLogDto {
   @IsOptional()
   @IsUUID()
   habitId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  personalGoalId?: string;
 }
 
 export class UpdateLogDto {
@@ -108,4 +112,12 @@ export class UpdateLogDto {
   )
   @IsUUID()
   habitId?: string | null;
+
+  /** Omit to leave unchanged; `null` or `""` clears the personal goal link. */
+  @IsOptional()
+  @ValidateIf(
+    (_, v) => v !== undefined && v !== null && v !== '',
+  )
+  @IsUUID()
+  personalGoalId?: string | null;
 }
