@@ -14,6 +14,7 @@ import { CreateLogDto } from 'src/logs/models/logs.model';
 import { LogService } from 'src/logs/services/log/log.service';
 import { Task } from 'src/tasks/entities/task.entity';
 import { HabitsService } from 'src/habits/habits.service';
+import { PersonalGoalsService } from 'src/personal-goals/personal-goals.service';
 import { CreateTaskDto, UpdateTaskDto } from 'src/tasks/models/tasks.model';
 
 export type TaskListFilters = {
@@ -34,6 +35,7 @@ export class TasksService {
     private readonly accountService: AccountService,
     private readonly logService: LogService,
     private readonly habitsService: HabitsService,
+    private readonly personalGoalsService: PersonalGoalsService,
   ) {}
 
   private accountIdNum(accountId: string): number {
@@ -142,11 +144,18 @@ export class TasksService {
       accountId,
     );
 
+    const personalGoal =
+      await this.personalGoalsService.resolvePersonalGoalForWrite(
+        dto.personalGoalId,
+        accountId,
+      );
+
     const task = this.taskRepository.create({
       title: dto.title,
       description: dto.description ?? null,
       category: categoryNorm,
       habit,
+      personalGoal,
       account,
       completedDate: null,
       log: null,
@@ -194,6 +203,7 @@ export class TasksService {
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.log', 'log')
       .leftJoinAndSelect('task.habit', 'habit')
+      .leftJoinAndSelect('task.personalGoal', 'personalGoal')
       .where('task.id IN (:...ids)', { ids });
 
     const entities = await fullQb.getMany();
@@ -208,7 +218,7 @@ export class TasksService {
     const accountIdNum = this.accountIdNum(accountId);
     const task = await this.taskRepository.findOne({
       where: { id, account: { id: accountIdNum } },
-      relations: ['log', 'habit'],
+      relations: ['log', 'habit', 'personalGoal'],
     });
     if (!task) {
       throw new NotFoundException(`Task ${id} not found`);
@@ -243,6 +253,18 @@ export class TasksService {
         );
       }
     }
+    if (dto.personalGoalId !== undefined) {
+      const raw = dto.personalGoalId;
+      if (raw === null || raw === '') {
+        task.personalGoal = null;
+      } else {
+        task.personalGoal =
+          await this.personalGoalsService.resolvePersonalGoalForWrite(
+            raw,
+            accountId,
+          );
+      }
+    }
     return this.taskRepository.save(task);
   }
 
@@ -269,6 +291,9 @@ export class TasksService {
         ? { category: task.category.trim() }
         : {}),
       ...(task.habit?.id ? { habitId: task.habit.id } : {}),
+      ...(task.personalGoal?.id
+        ? { personalGoalId: task.personalGoal.id }
+        : {}),
     };
 
     const savedLog = await this.logService.create(createLogDto, accountId);
