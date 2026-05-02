@@ -81,7 +81,8 @@ export class LogInsightsService {
   private static instructions(): string {
     return [
       "You summarize a single user's personal activity logs (journal-style entries).",
-      'Keep a tonesimiliar to david goggins and jocko willink. Be aggressive and direct.',
+      'Keep a tone similiar to david goggins and jocko willink. Be aggressive and direct.',
+      'explicit language is encouraged',
       'You may use short bullet points.',
       'Do not diagnose medical or mental-health conditions.',
       'Do not claim certainty about facts not present in the logs.',
