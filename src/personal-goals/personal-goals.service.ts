@@ -162,6 +162,26 @@ export class PersonalGoalsService {
     return this.enrichWithCounts([goal], counts)[0];
   }
 
+  /**
+   * Non-deleted logs for this account that reference the personal goal.
+   * Ordered by completed date (newest first), then updated time.
+   */
+  async findLogsForPersonalGoal(
+    goalId: string,
+    accountId: string,
+  ): Promise<Log[]> {
+    await this.findOne(goalId, accountId);
+    const accountIdNum = this.accountIdNum(accountId);
+    return this.logRepository.find({
+      where: {
+        personalGoal: { id: goalId },
+        account: { id: accountIdNum },
+      },
+      relations: ['habit', 'personalGoal'],
+      order: { completedDate: 'DESC', updatedAt: 'DESC' },
+    });
+  }
+
   async update(
     id: string,
     dto: UpdatePersonalGoalDto,

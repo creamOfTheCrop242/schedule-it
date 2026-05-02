@@ -33,6 +33,17 @@ export class PersonalGoalsController {
     return this.personalGoalsService.findAll(String(req.user.id));
   }
 
+  @Get(':id/logs')
+  findLogsForGoal(
+    @Param('id') id: string,
+    @Req() req: Request & { user: { id: string | number } },
+  ) {
+    return this.personalGoalsService.findLogsForPersonalGoal(
+      id,
+      String(req.user.id),
+    );
+  }
+
   @Get(':id')
   findOne(
     @Param('id') id: string,

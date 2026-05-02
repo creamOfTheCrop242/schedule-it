@@ -15,6 +15,7 @@ describe('PersonalGoalsController', () => {
             findAll: async () => [],
             create: async () => ({}),
             findOne: async () => ({}),
+            findLogsForPersonalGoal: async () => [],
             update: async () => ({}),
             remove: async () => undefined,
           },

@@ -8,7 +8,7 @@ import { PersonalGoalsService } from './personal-goals.service';
 describe('PersonalGoalsService', () => {
   let service: PersonalGoalsService;
   let goalRepo: Record<string, jest.Mock>;
-  let logRepo: { createQueryBuilder: jest.Mock };
+  let logRepo: { createQueryBuilder: jest.Mock; find: jest.Mock };
 
   beforeEach(async () => {
     goalRepo = {
@@ -20,6 +20,7 @@ describe('PersonalGoalsService', () => {
     };
     logRepo = {
       createQueryBuilder: jest.fn(),
+      find: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -50,5 +51,25 @@ describe('PersonalGoalsService', () => {
     await expect(
       service.resolvePersonalGoalForWrite('g1', '1'),
     ).resolves.toEqual(g);
+  });
+
+  it('findLogsForPersonalGoal returns logs when goal exists', async () => {
+    const g = { id: 'g1', title: 'T' } as PersonalGoal;
+    (goalRepo.findOne as jest.Mock).mockResolvedValue(g);
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    };
+    (logRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+    const logRow = { id: 'l1', name: 'A log' } as unknown as Log;
+    (logRepo.find as jest.Mock).mockResolvedValue([logRow]);
+    await expect(service.findLogsForPersonalGoal('g1', '1')).resolves.toEqual([
+      logRow,
+    ]);
+    expect(logRepo.find).toHaveBeenCalled();
   });
 });
