@@ -13,6 +13,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { CategoriesModule } from './categories/categories.module';
 import { HabitsModule } from './habits/habits.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { DailyMotivationModule } from './daily-motivation/daily-motivation.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { FeedbackModule } from './feedback/feedback.module';
     CategoriesModule,
     HabitsModule,
     FeedbackModule,
+    DailyMotivationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
