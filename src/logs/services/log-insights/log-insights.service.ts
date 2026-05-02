@@ -6,11 +6,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 
-import { Log } from 'src/logs/entities/log.entity';
 import { LogService } from 'src/logs/services/log/log.service';
-
-/** Max characters per textual field when building the model input. */
-const TRUNCATION = 500;
+import { serializeLogsForModel } from 'src/logs/utils/log-excerpts-for-model';
 
 @Injectable()
 export class LogInsightsService {
@@ -53,7 +50,7 @@ export class LogInsightsService {
 
     const model =
       this.configService.get<string>('OPENAI_MODEL')?.trim() ?? 'gpt-5.5';
-    const logPayload = LogInsightsService.serializeLogs(logs);
+    const logPayload = serializeLogsForModel(logs);
     const client = new OpenAI({ apiKey });
 
     try {
@@ -91,68 +88,4 @@ export class LogInsightsService {
     ].join(' ');
   }
 
-  private static clip(value: string | null | undefined): string {
-    if (value === null || value === undefined) {
-      return '';
-    }
-    const s = String(value).trim();
-    if (s.length <= TRUNCATION) {
-      return s;
-    }
-    return `${s.slice(0, TRUNCATION)}…`;
-  }
-
-  private static serializeLogs(logs: Log[]): string {
-    const lines: string[] = ['Log excerpts (most recent slice first):\n'];
-
-    let index = 0;
-    for (const log of logs) {
-      index += 1;
-      lines.push(`--- Log ${index} ---`);
-
-      lines.push(`Title: ${LogInsightsService.clip(log.name) || '(no title)'}`);
-
-      if (log.completedDate) {
-        lines.push(
-          `Completed: ${log.completedDate instanceof Date ? log.completedDate.toISOString() : String(log.completedDate)}`,
-        );
-      }
-      if (log.mood) {
-        lines.push(`Mood: ${LogInsightsService.clip(log.mood)}`);
-      }
-      if (log.category) {
-        lines.push(`Category: ${LogInsightsService.clip(log.category)}`);
-      }
-      const desc = LogInsightsService.clip(log.description);
-      if (desc) {
-        lines.push(`Description: ${desc}`);
-      }
-      const sur = LogInsightsService.clip(log.surroundings);
-      if (sur) {
-        lines.push(`Surroundings: ${sur}`);
-      }
-
-      const habitName = log.habit?.name;
-      if (habitName) {
-        lines.push(`Habit: ${LogInsightsService.clip(habitName)}`);
-      }
-
-      const pgTitle = log.personalGoal?.title;
-      if (pgTitle) {
-        lines.push(`Personal goal: ${LogInsightsService.clip(pgTitle)}`);
-      }
-
-      const notes = log.notes ?? [];
-      if (notes.length > 0) {
-        lines.push('Notes:');
-        for (const note of notes) {
-          lines.push(`- ${LogInsightsService.clip(note?.content)}`);
-        }
-      }
-
-      lines.push('');
-    }
-
-    return lines.join('\n');
-  }
 }

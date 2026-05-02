@@ -165,21 +165,50 @@ export class PersonalGoalsService {
   /**
    * Non-deleted logs for this account that reference the personal goal.
    * Ordered by completed date (newest first), then updated time.
+   * @param options When `limit` or `includeNotes` is set, uses a query builder (bounded fetch, optional notes).
    */
   async findLogsForPersonalGoal(
     goalId: string,
     accountId: string,
+    options?: { limit?: number; includeNotes?: boolean },
   ): Promise<Log[]> {
     await this.findOne(goalId, accountId);
     const accountIdNum = this.accountIdNum(accountId);
-    return this.logRepository.find({
-      where: {
-        personalGoal: { id: goalId },
-        account: { id: accountIdNum },
-      },
-      relations: ['habit', 'personalGoal'],
-      order: { completedDate: 'DESC', updatedAt: 'DESC' },
-    });
+
+    const needsQueryBuilder =
+      options !== undefined &&
+      (options.limit !== undefined || options.includeNotes === true);
+
+    if (!needsQueryBuilder) {
+      return this.logRepository.find({
+        where: {
+          personalGoal: { id: goalId },
+          account: { id: accountIdNum },
+        },
+        relations: ['habit', 'personalGoal'],
+        order: { completedDate: 'DESC', updatedAt: 'DESC' },
+      });
+    }
+
+    const qb = this.logRepository
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.habit', 'habit')
+      .leftJoinAndSelect('log.personalGoal', 'personalGoal')
+      .where('log.accountId = :accountId', { accountId: accountIdNum })
+      .andWhere('log.personalGoalId = :goalId', { goalId })
+      .andWhere('log.deletedAt IS NULL')
+      .orderBy('log.completedDate', 'DESC', 'NULLS LAST')
+      .addOrderBy('log.updatedAt', 'DESC');
+
+    if (options!.includeNotes) {
+      qb.leftJoinAndSelect('log.notes', 'notes');
+    }
+    if (options!.limit !== undefined && options!.limit > 0) {
+      const cap = Math.min(options!.limit, 100);
+      qb.take(cap);
+    }
+
+    return qb.getMany();
   }
 
   async update(
