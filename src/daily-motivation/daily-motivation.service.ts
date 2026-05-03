@@ -106,12 +106,12 @@ export class DailyMotivationService {
     // “Asian” buckets non-adjacent so readers rarely get South Asia then East Asia back-to-back.
     const regions = [
       'Africa',
-      'the Americas (North, Central, South, or the Caribbean)',
+      'Asia',
       'Europe',
-      'the Middle East, North Africa, or Central Asia',
-      'South Asia',
-      'Oceania or the Pacific Islands',
-      'East or Southeast Asia',
+      'North America',
+      'South America',
+      'Australia',
+      'Antarctica',
     ];
     let h = 0;
     for (let i = 0; i < date.length; i++) {
