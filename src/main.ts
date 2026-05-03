@@ -14,56 +14,86 @@ async function migrateGoalMetricToLog(): Promise<void> {
 
   const client = new Client({
     connectionString: url,
-    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+    ssl:
+      (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ??
+      undefined,
   });
 
   try {
     await client.connect();
 
     try {
-      await client.query(`ALTER TYPE goal_definitions_metric_enum ADD VALUE IF NOT EXISTS 'LOGS_COMPLETED'`);
+      await client.query(
+        `ALTER TYPE goal_definitions_metric_enum ADD VALUE IF NOT EXISTS 'LOGS_COMPLETED'`,
+      );
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string };
-      if (err.code === '42710' || (err.message && /already exists/.test(err.message))) {
+      if (
+        err.code === '42710' ||
+        (err.message && /already exists/.test(err.message))
+      ) {
         // Value already in enum, ignore
       } else if (err.code === '42704') {
         // Type does not exist yet (fresh DB), TypeORM will create it
         return;
       } else {
         try {
-          await client.query(`ALTER TYPE goal_definitions_metric_enum ADD VALUE 'LOGS_COMPLETED'`);
+          await client.query(
+            `ALTER TYPE goal_definitions_metric_enum ADD VALUE 'LOGS_COMPLETED'`,
+          );
         } catch (e2: unknown) {
           const err2 = e2 as { code?: string; message?: string };
-          if (err2.code !== '42710' && err2.code !== '42704' && (!err2.message || !/already exists/.test(err2.message))) throw e2;
+          if (
+            err2.code !== '42710' &&
+            err2.code !== '42704' &&
+            (!err2.message || !/already exists/.test(err2.message))
+          )
+            throw e2;
         }
       }
     }
 
-    const r = await client.query(
-      `UPDATE goal_definitions SET metric = 'LOGS_COMPLETED'::goal_definitions_metric_enum WHERE metric = 'TASKS_COMPLETED'::goal_definitions_metric_enum`
-    ).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42P01') return { rowCount: 0 }; // table does not exist yet
-      throw e;
-    });
+    const r = await client
+      .query(
+        `UPDATE goal_definitions SET metric = 'LOGS_COMPLETED'::goal_definitions_metric_enum WHERE metric = 'TASKS_COMPLETED'::goal_definitions_metric_enum`,
+      )
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P01') return { rowCount: 0 }; // table does not exist yet
+        throw e;
+      });
     if (r.rowCount && r.rowCount > 0) {
-      console.log(`[migrate] Updated ${r.rowCount} goal_definitions from TASKS_COMPLETED to LOGS_COMPLETED`);
+      console.log(
+        `[migrate] Updated ${r.rowCount} goal_definitions from TASKS_COMPLETED to LOGS_COMPLETED`,
+      );
     }
 
     try {
-      await client.query(`ALTER TYPE goal_definitions_metric_enum ADD VALUE IF NOT EXISTS 'LOGS_ADDED'`);
+      await client.query(
+        `ALTER TYPE goal_definitions_metric_enum ADD VALUE IF NOT EXISTS 'LOGS_ADDED'`,
+      );
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string };
-      if (err.code === '42710' || (err.message && /already exists/.test(err.message))) {
+      if (
+        err.code === '42710' ||
+        (err.message && /already exists/.test(err.message))
+      ) {
         // Value already in enum, ignore
       } else if (err.code === '42704') {
         // Type does not exist yet (fresh DB), TypeORM will create it
       } else {
         try {
-          await client.query(`ALTER TYPE goal_definitions_metric_enum ADD VALUE 'LOGS_ADDED'`);
+          await client.query(
+            `ALTER TYPE goal_definitions_metric_enum ADD VALUE 'LOGS_ADDED'`,
+          );
         } catch (e2: unknown) {
           const err2 = e2 as { code?: string; message?: string };
-          if (err2.code !== '42710' && err2.code !== '42704' && (!err2.message || !/already exists/.test(err2.message))) throw e2;
+          if (
+            err2.code !== '42710' &&
+            err2.code !== '42704' &&
+            (!err2.message || !/already exists/.test(err2.message))
+          )
+            throw e2;
         }
       }
     }
@@ -79,25 +109,31 @@ async function migrateLogDateColumns(): Promise<void> {
 
   const client = new Client({
     connectionString: url,
-    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+    ssl:
+      (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ??
+      undefined,
   });
 
   try {
     await client.connect();
 
-    await client.query(`ALTER TABLE log RENAME COLUMN start_date TO start_time`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42703') return; // column already renamed (start_date does not exist)
-      if (err.code === '42P01') return; // table does not exist yet
-      throw e;
-    });
+    await client
+      .query(`ALTER TABLE log RENAME COLUMN start_date TO start_time`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42703') return; // column already renamed (start_date does not exist)
+        if (err.code === '42P01') return; // table does not exist yet
+        throw e;
+      });
 
-    await client.query(`ALTER TABLE log RENAME COLUMN due_date TO end_time`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42703') return; // column already renamed (due_date does not exist)
-      if (err.code === '42P01') return; // table does not exist yet
-      throw e;
-    });
+    await client
+      .query(`ALTER TABLE log RENAME COLUMN due_date TO end_time`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42703') return; // column already renamed (due_date does not exist)
+        if (err.code === '42P01') return; // table does not exist yet
+        throw e;
+      });
   } finally {
     await client.end();
   }
@@ -110,25 +146,31 @@ async function migrateLogSurroundingsMood(): Promise<void> {
 
   const client = new Client({
     connectionString: url,
-    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+    ssl:
+      (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ??
+      undefined,
   });
 
   try {
     await client.connect();
 
-    await client.query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS surroundings text`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42701') return; // column already exists
-      if (err.code === '42P01') return; // table does not exist yet
-      throw e;
-    });
+    await client
+      .query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS surroundings text`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42701') return; // column already exists
+        if (err.code === '42P01') return; // table does not exist yet
+        throw e;
+      });
 
-    await client.query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS mood text`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42701') return; // column already exists
-      if (err.code === '42P01') return; // table does not exist yet
-      throw e;
-    });
+    await client
+      .query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS mood text`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42701') return; // column already exists
+        if (err.code === '42P01') return; // table does not exist yet
+        throw e;
+      });
   } finally {
     await client.end();
   }
@@ -141,17 +183,21 @@ async function migrateLogDropCompletedColumn(): Promise<void> {
 
   const client = new Client({
     connectionString: url,
-    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+    ssl:
+      (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ??
+      undefined,
   });
 
   try {
     await client.connect();
 
-    await client.query(`ALTER TABLE log DROP COLUMN IF EXISTS completed`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42P01') return; // table does not exist yet
-      throw e;
-    });
+    await client
+      .query(`ALTER TABLE log DROP COLUMN IF EXISTS completed`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P01') return; // table does not exist yet
+        throw e;
+      });
   } finally {
     await client.end();
   }
@@ -164,25 +210,31 @@ async function migrateLogTaskCategory(): Promise<void> {
 
   const client = new Client({
     connectionString: url,
-    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+    ssl:
+      (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ??
+      undefined,
   });
 
   try {
     await client.connect();
 
-    await client.query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS category text`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42701') return;
-      if (err.code === '42P01') return;
-      throw e;
-    });
+    await client
+      .query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS category text`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42701') return;
+        if (err.code === '42P01') return;
+        throw e;
+      });
 
-    await client.query(`ALTER TABLE task ADD COLUMN IF NOT EXISTS category text`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42701') return;
-      if (err.code === '42P01') return;
-      throw e;
-    });
+    await client
+      .query(`ALTER TABLE task ADD COLUMN IF NOT EXISTS category text`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42701') return;
+        if (err.code === '42P01') return;
+        throw e;
+      });
   } finally {
     await client.end();
   }
@@ -195,17 +247,21 @@ async function migrateLogDropPriorityColumn(): Promise<void> {
 
   const client = new Client({
     connectionString: url,
-    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+    ssl:
+      (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ??
+      undefined,
   });
 
   try {
     await client.connect();
 
-    await client.query(`ALTER TABLE log DROP COLUMN IF EXISTS priority`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42P01') return; // table does not exist yet
-      throw e;
-    });
+    await client
+      .query(`ALTER TABLE log DROP COLUMN IF EXISTS priority`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P01') return; // table does not exist yet
+        throw e;
+      });
   } finally {
     await client.end();
   }
@@ -218,14 +274,17 @@ async function migrateHabits(): Promise<void> {
 
   const client = new Client({
     connectionString: url,
-    ssl: (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ?? undefined,
+    ssl:
+      (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ??
+      undefined,
   });
 
   try {
     await client.connect();
 
     await client
-      .query(`
+      .query(
+        `
         CREATE TABLE IF NOT EXISTS habit (
           id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
           name text NOT NULL,
@@ -235,7 +294,8 @@ async function migrateHabits(): Promise<void> {
           "updatedAt" timestamptz NOT NULL DEFAULT NOW(),
           "deletedAt" timestamptz
         )
-      `)
+      `,
+      )
       .catch((e: unknown) => {
         const err = e as { code?: string };
         if (err.code === '42P07') return;
@@ -244,29 +304,36 @@ async function migrateHabits(): Promise<void> {
       });
 
     await client
-      .query(`CREATE INDEX IF NOT EXISTS "IDX_habit_accountId" ON habit ("accountId")`)
+      .query(
+        `CREATE INDEX IF NOT EXISTS "IDX_habit_accountId" ON habit ("accountId")`,
+      )
       .catch((e: unknown) => {
         const err = e as { code?: string };
         if (err.code === '42P01') return;
         throw e;
       });
 
-    await client.query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS "habitId" uuid`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42701') return;
-      if (err.code === '42P01') return;
-      throw e;
-    });
-
-    await client.query(`ALTER TABLE task ADD COLUMN IF NOT EXISTS "habitId" uuid`).catch((e: unknown) => {
-      const err = e as { code?: string };
-      if (err.code === '42701') return;
-      if (err.code === '42P01') return;
-      throw e;
-    });
+    await client
+      .query(`ALTER TABLE log ADD COLUMN IF NOT EXISTS "habitId" uuid`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42701') return;
+        if (err.code === '42P01') return;
+        throw e;
+      });
 
     await client
-      .query(`
+      .query(`ALTER TABLE task ADD COLUMN IF NOT EXISTS "habitId" uuid`)
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42701') return;
+        if (err.code === '42P01') return;
+        throw e;
+      });
+
+    await client
+      .query(
+        `
         DO $c$
         BEGIN
           IF NOT EXISTS (
@@ -277,7 +344,8 @@ async function migrateHabits(): Promise<void> {
           END IF;
         END
         $c$;
-      `)
+      `,
+      )
       .catch((e: unknown) => {
         const err = e as { code?: string; message?: string };
         if (err.message?.includes('already exists')) return;
@@ -285,7 +353,8 @@ async function migrateHabits(): Promise<void> {
       });
 
     await client
-      .query(`
+      .query(
+        `
         DO $c$
         BEGIN
           IF NOT EXISTS (
@@ -296,7 +365,8 @@ async function migrateHabits(): Promise<void> {
           END IF;
         END
         $c$;
-      `)
+      `,
+      )
       .catch((e: unknown) => {
         const err = e as { code?: string; message?: string };
         if (err.message?.includes('already exists')) return;
@@ -331,43 +401,64 @@ async function bootstrap() {
   try {
     await migrateGoalMetricToLog();
   } catch (e) {
-    console.warn('[migrate] Goal metric migration skipped or failed:', (e as Error).message);
+    console.warn(
+      '[migrate] Goal metric migration skipped or failed:',
+      (e as Error).message,
+    );
   }
 
   try {
     await migrateLogDateColumns();
   } catch (e) {
-    console.warn('[migrate] Log date columns migration skipped or failed:', (e as Error).message);
+    console.warn(
+      '[migrate] Log date columns migration skipped or failed:',
+      (e as Error).message,
+    );
   }
 
   try {
     await migrateLogSurroundingsMood();
   } catch (e) {
-    console.warn('[migrate] Log surroundings/mood migration skipped or failed:', (e as Error).message);
+    console.warn(
+      '[migrate] Log surroundings/mood migration skipped or failed:',
+      (e as Error).message,
+    );
   }
 
   try {
     await migrateLogDropCompletedColumn();
   } catch (e) {
-    console.warn('[migrate] Log drop completed column skipped or failed:', (e as Error).message);
+    console.warn(
+      '[migrate] Log drop completed column skipped or failed:',
+      (e as Error).message,
+    );
   }
 
   try {
     await migrateLogDropPriorityColumn();
   } catch (e) {
-    console.warn('[migrate] Log drop priority column skipped or failed:', (e as Error).message);
+    console.warn(
+      '[migrate] Log drop priority column skipped or failed:',
+      (e as Error).message,
+    );
   }
 
   try {
     await migrateLogTaskCategory();
   } catch (e) {
-    console.warn('[migrate] Log/task category column skipped or failed:', (e as Error).message);
+    console.warn(
+      '[migrate] Log/task category column skipped or failed:',
+      (e as Error).message,
+    );
   }
 
   try {
     await migrateHabits();
   } catch (e) {
-    console.warn('[migrate] Habits migration skipped or failed:', (e as Error).message);
+    console.warn(
+      '[migrate] Habits migration skipped or failed:',
+      (e as Error).message,
+    );
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -388,7 +479,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:4200',
       'https://theguidelog.com',
-      'https://www.theguidelog.com',
+      'https://app.theguidelog.com',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
