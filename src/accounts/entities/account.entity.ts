@@ -37,6 +37,10 @@ export class Account {
   @Column({ nullable: true })
   profileImage: string;
 
+  /** IANA timezone for scheduled log summaries (day/week/month/year). */
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  summaryTimeZone: string | null;
+
   @DeleteDateColumn()
   deletedAt?: Date;
 

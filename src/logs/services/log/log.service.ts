@@ -335,6 +335,56 @@ export class LogService {
     return entities;
   }
 
+  /**
+   * Logs in a UTC half-open range for scheduled summaries: same in-range rule as
+   * a single local day list (completedDate in range OR null completedDate with
+   * createdAt in range). No mood/category/search. Newest first, hard-capped.
+   */
+  async findLogsForSummaryInUtcRange(options: {
+    accountId: string;
+    startUtc: Date;
+    endUtc: Date;
+    maxRows: number;
+  }): Promise<Log[]> {
+    const accountIdNum = parseInt(options.accountId, 10);
+    if (Number.isNaN(accountIdNum)) {
+      throw new BadRequestException('Invalid account id');
+    }
+    const take = Math.min(Math.max(1, options.maxRows), 500);
+
+    const idQb = this.logRepository.createQueryBuilder('log');
+    idQb
+      .where('log.deletedAt IS NULL')
+      .andWhere('log.accountId = :accountId', { accountId: accountIdNum })
+      .andWhere(
+        '((log.completedDate >= :startUtc AND log.completedDate < :endUtc) OR (log.completedDate IS NULL AND log.createdAt >= :startUtc AND log.createdAt < :endUtc))',
+        { startUtc: options.startUtc, endUtc: options.endUtc },
+      )
+      .orderBy('COALESCE(log.completedDate, log.createdAt)', 'DESC')
+      .take(take);
+
+    const pageRows = await idQb.getMany();
+    const ids = pageRows.map((row) => row.id);
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const fullQb = this.logRepository
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.dependencyLog', 'dependencyLog')
+      .leftJoinAndSelect('log.notes', 'notes')
+      .leftJoinAndSelect('log.habit', 'habit')
+      .leftJoinAndSelect('log.personalGoal', 'personalGoal')
+      .where('log.id IN (:...ids)', { ids });
+
+    const entities = await fullQb.getMany();
+    const orderIndex = new Map(ids.map((id, index) => [id, index]));
+    entities.sort(
+      (a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0),
+    );
+    return entities;
+  }
+
   /** Distinct non-null moods for the account matching date + search (not mood). */
   async findDistinctMoods(request: {
     completedDate?: string;

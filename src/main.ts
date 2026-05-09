@@ -397,6 +397,70 @@ async function migrateHabits(): Promise<void> {
   }
 }
 
+/** One-time migration: log_period_summary table + account.summaryTimeZone for scheduled rollups. */
+async function migrateLogPeriodSummaryAndAccountTz(): Promise<void> {
+  const url = (serverConfig as { url?: string }).url;
+  if (!url) return;
+
+  const client = new Client({
+    connectionString: url,
+    ssl:
+      (serverConfig as { ssl?: { rejectUnauthorized: boolean } }).ssl ??
+      undefined,
+  });
+
+  try {
+    await client.connect();
+
+    await client
+      .query(
+        `ALTER TABLE account ADD COLUMN IF NOT EXISTS "summaryTimeZone" varchar(64) NULL`,
+      )
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P01') return;
+        throw e;
+      });
+
+    await client
+      .query(
+        `
+        CREATE TABLE IF NOT EXISTS log_period_summary (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          "accountId" integer NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+          "periodType" varchar(8) NOT NULL,
+          "periodKey" varchar(16) NOT NULL,
+          summary text NULL,
+          status varchar(16) NOT NULL DEFAULT 'OK',
+          "errorMessage" text NULL,
+          model varchar(64) NULL,
+          "createdAt" timestamptz NOT NULL DEFAULT now(),
+          "updatedAt" timestamptz NOT NULL DEFAULT now(),
+          CONSTRAINT "UQ_log_period_summary_account_type_key" UNIQUE ("accountId", "periodType", "periodKey")
+        )
+      `,
+      )
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P07') return;
+        if (err.code === '42P01') return;
+        throw e;
+      });
+
+    await client
+      .query(
+        `CREATE INDEX IF NOT EXISTS "IDX_log_period_summary_account_period" ON log_period_summary ("accountId", "periodType")`,
+      )
+      .catch((e: unknown) => {
+        const err = e as { code?: string };
+        if (err.code === '42P01') return;
+        throw e;
+      });
+  } finally {
+    await client.end();
+  }
+}
+
 async function bootstrap() {
   try {
     await migrateGoalMetricToLog();
@@ -457,6 +521,15 @@ async function bootstrap() {
   } catch (e) {
     console.warn(
       '[migrate] Habits migration skipped or failed:',
+      (e as Error).message,
+    );
+  }
+
+  try {
+    await migrateLogPeriodSummaryAndAccountTz();
+  } catch (e) {
+    console.warn(
+      '[migrate] Log period summary / account timezone skipped or failed:',
       (e as Error).message,
     );
   }

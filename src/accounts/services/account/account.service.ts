@@ -10,7 +10,7 @@ import {
 } from 'src/accounts/dto/account.dto';
 import { Account } from 'src/accounts/entities/account.entity';
 import { EmailVerification } from 'src/auth/entities/email-verification.entity';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 
 @Injectable()
 export class AccountService {
@@ -100,6 +100,7 @@ export class AccountService {
         'googleId',
         'facebookId',
         'profileImage',
+        'summaryTimeZone',
         'createdAt',
         'deletedAt',
       ],
@@ -127,6 +128,10 @@ export class AccountService {
 
     if (dto.email !== undefined) account.email = dto.email;
     if (dto.name !== undefined) account.name = dto.name;
+    if (dto.summaryTimeZone !== undefined) {
+      const z = dto.summaryTimeZone?.trim();
+      account.summaryTimeZone = z && z.length > 0 ? z.slice(0, 64) : null;
+    }
 
     return await this.accountRepository.save(account);
   }
@@ -145,5 +150,13 @@ export class AccountService {
 
   async saveAccount(account: Account) {
     return await this.accountRepository.save(account);
+  }
+
+  /** Active accounts for the nightly log period summary job. */
+  async listAccountsForSummaryJob(): Promise<Account[]> {
+    return this.accountRepository.find({
+      where: { deletedAt: IsNull() },
+      select: ['id', 'summaryTimeZone', 'deletedAt'],
+    });
   }
 }
