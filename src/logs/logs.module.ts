@@ -4,6 +4,7 @@ import { AccountModule } from 'src/accounts/account.module';
 import { LogController } from './controllers/logs/logs.controller';
 import { Log } from './entities/log.entity';
 import { LogInsightsService } from './services/log-insights/log-insights.service';
+import { LogVoiceService } from './services/log-voice/log-voice.service';
 import { LogService } from './services/log/log.service';
 import { Task } from 'src/tasks/entities/task.entity';
 import { JwtService } from '@nestjs/jwt';
@@ -20,7 +21,7 @@ import { PersonalGoalsModule } from 'src/personal-goals/personal-goals.module';
     PersonalGoalsModule,
   ],
   controllers: [LogController],
-  providers: [LogService, LogInsightsService, JwtService],
+  providers: [LogService, LogInsightsService, LogVoiceService, JwtService],
   exports: [LogService],
 })
 export class LogsModule {}
