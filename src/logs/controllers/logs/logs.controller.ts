@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,19 +10,28 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtService } from '@nestjs/jwt';
+import type { Express } from 'express';
+import { memoryStorage } from 'multer';
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.auth.guard';
 import { CreateLogDto, UpdateLogDto } from 'src/logs/models/logs.model';
 import { LogInsightsService } from 'src/logs/services/log-insights/log-insights.service';
+import { LogVoiceService } from 'src/logs/services/log-voice/log-voice.service';
 import { LogService } from 'src/logs/services/log/log.service';
+
+const VOICE_UPLOAD_MAX_BYTES = 15 * 1024 * 1024;
 
 @Controller('logs')
 export class LogController {
   constructor(
     private readonly logService: LogService,
     private readonly logInsightsService: LogInsightsService,
+    private readonly logVoiceService: LogVoiceService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -29,6 +39,23 @@ export class LogController {
   @UseGuards(JwtAuthGuard)
   create(@Body() createLogDto: CreateLogDto, @Req() req: any) {
     return this.logService.create(createLogDto, req.user.id);
+  }
+
+  @Post('voice-draft')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: memoryStorage(),
+      limits: { fileSize: VOICE_UPLOAD_MAX_BYTES },
+    }),
+  )
+  voiceDraft(@UploadedFile() file: Express.Multer.File | undefined) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException(
+        'Multipart field "audio" with a recording is required.',
+      );
+    }
+    return this.logVoiceService.draftFromAudio(file);
   }
 
   @Get()
