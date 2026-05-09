@@ -1,5 +1,7 @@
 import {
   BadGatewayException,
+  HttpException,
+  HttpStatus,
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -11,6 +13,10 @@ import { serializeLogsForModel } from 'src/logs/utils/log-excerpts-for-model';
 
 @Injectable()
 export class LogInsightsService {
+  /** Per-account last successful OpenAI summary (in-process; resets on deploy / multi-instance drift). */
+  private static readonly lastAiSummarySuccessAt = new Map<string, number>();
+  private static readonly AI_SUMMARY_COOLDOWN_MS = 5 * 60 * 1000;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly logService: LogService,
@@ -48,6 +54,8 @@ export class LogInsightsService {
       };
     }
 
+    LogInsightsService.assertAiSummaryCooldown(accountId);
+
     const model =
       this.configService.get<string>('OPENAI_MODEL')?.trim() ?? 'gpt-5.5';
     const logPayload = serializeLogsForModel(logs);
@@ -65,6 +73,7 @@ export class LogInsightsService {
           'The model returned no text. Try again or check OPENAI_MODEL.',
         );
       }
+      LogInsightsService.lastAiSummarySuccessAt.set(accountId, Date.now());
       return { summary: text };
     } catch (err: unknown) {
       if (err instanceof ServiceUnavailableException) {
@@ -73,6 +82,27 @@ export class LogInsightsService {
       const msg = err instanceof Error ? err.message : 'OpenAI request failed';
       throw new BadGatewayException(msg);
     }
+  }
+
+  private static assertAiSummaryCooldown(accountId: string): void {
+    const last = LogInsightsService.lastAiSummarySuccessAt.get(accountId);
+    if (last === undefined) {
+      return;
+    }
+    const elapsed = Date.now() - last;
+    if (elapsed >= LogInsightsService.AI_SUMMARY_COOLDOWN_MS) {
+      return;
+    }
+    const retryAfterSec = Math.ceil(
+      (LogInsightsService.AI_SUMMARY_COOLDOWN_MS - elapsed) / 1000,
+    );
+    throw new HttpException(
+      {
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        message: `AI summary can be run once every 5 minutes. Try again in ${retryAfterSec} seconds.`,
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
   }
 
   private static instructions(): string {
