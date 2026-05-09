@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  GoneException,
   Param,
   Patch,
   Post,
@@ -13,6 +14,7 @@ import {
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtService } from '@nestjs/jwt';
 import type { Express } from 'express';
@@ -23,15 +25,26 @@ import { CreateLogDto, UpdateLogDto } from 'src/logs/models/logs.model';
 import { LogInsightsService } from 'src/logs/services/log-insights/log-insights.service';
 import { LogVoiceService } from 'src/logs/services/log-voice/log-voice.service';
 import { LogService } from 'src/logs/services/log/log.service';
+import type { LogPeriodSummaryType } from 'src/logs/entities/log-period-summary.entity';
+import { LogPeriodSummaryReadService } from 'src/logs/services/log-period-summary/log-period-summary-read.service';
 
 const VOICE_UPLOAD_MAX_BYTES = 15 * 1024 * 1024;
+
+const STORED_SUMMARY_PERIODS = new Set<LogPeriodSummaryType>([
+  'DAY',
+  'WEEK',
+  'MONTH',
+  'YEAR',
+]);
 
 @Controller('logs')
 export class LogController {
   constructor(
+    private readonly configService: ConfigService,
     private readonly logService: LogService,
     private readonly logInsightsService: LogInsightsService,
     private readonly logVoiceService: LogVoiceService,
+    private readonly logPeriodSummaryRead: LogPeriodSummaryReadService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -108,6 +121,40 @@ export class LogController {
     });
   }
 
+  @Get('summaries')
+  @UseGuards(JwtAuthGuard)
+  async getStoredPeriodSummary(
+    @Req() req: Request & { user: { id: string | number } },
+    @Query('period') period: string,
+    @Query('anchor') anchor: string,
+    @Query('timeZone') timeZone?: string,
+  ) {
+    const periodUpper = (period ?? '').toUpperCase() as LogPeriodSummaryType;
+    if (!STORED_SUMMARY_PERIODS.has(periodUpper)) {
+      throw new BadRequestException(
+        'period must be one of: day, week, month, year',
+      );
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(anchor ?? '')) {
+      throw new BadRequestException('anchor must be yyyy-MM-dd');
+    }
+    const row = await this.logPeriodSummaryRead.getSummaryForAnchor({
+      accountId: String(req.user.id),
+      periodType: periodUpper,
+      anchorYmd: anchor,
+      timeZoneFallback: LogController.firstQueryValue(timeZone) ?? 'UTC',
+    });
+    return {
+      periodType: row.periodType,
+      periodKey: row.periodKey,
+      summary: row.summary,
+      status: row.status,
+      errorMessage: row.errorMessage,
+      model: row.model,
+      updatedAt: row.updatedAt,
+    };
+  }
+
   @Get('ai-summary')
   @UseGuards(JwtAuthGuard)
   getAiSummary(
@@ -119,6 +166,13 @@ export class LogController {
     @Query('category') category?: string | string[],
     @Query('search') search?: string | string[],
   ) {
+    if (
+      this.configService.get<string>('LEGACY_ON_DEMAND_AI_SUMMARY') !== 'true'
+    ) {
+      throw new GoneException(
+        'On-demand AI summary is disabled. Use GET /logs/summaries for stored day/week/month/year summaries.',
+      );
+    }
     return this.logInsightsService.summarize(String(req.user.id), {
       completedDate,
       status,

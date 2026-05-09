@@ -1,4 +1,11 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class RegisterAccountDto {
   @IsString()
@@ -13,9 +20,22 @@ export class RegisterAccountDto {
   password: string;
 }
 
-export interface UpdateAccountDto {
+export class UpdateAccountDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
   name?: string;
+
+  @IsOptional()
+  @IsEmail()
   email?: string;
+
+  /** IANA timezone for scheduled log summaries (e.g. America/New_York). */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsString()
+  @MaxLength(64)
+  summaryTimeZone?: string | null;
 }
 
 export interface UpdatePasswordDto {
