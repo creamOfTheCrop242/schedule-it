@@ -26,6 +26,7 @@ describe('LogVoiceService', () => {
         name: 'Feeling grateful',
         mood: 'Happy',
         description: 'Said feeling great.',
+        surroundings: 'At home, quiet morning.',
         transcript: 'I am feeling great today',
       }),
     });
@@ -93,6 +94,7 @@ describe('LogVoiceService', () => {
 
     expect(draft.name).toBe('Feeling grateful');
     expect(draft.mood).toBe('Happy');
+    expect(draft.surroundings).toBe('At home, quiet morning.');
     expect(draft.transcript.length).toBeGreaterThan(0);
     expect(transcriptionCreateMock).toHaveBeenCalledTimes(1);
     expect(responsesCreateMock).toHaveBeenCalledTimes(1);
@@ -101,12 +103,27 @@ describe('LogVoiceService', () => {
     expect(structInput).toContain('feeling great');
   });
 
+  it('defaults surroundings to empty string when model JSON omits it', async () => {
+    responsesCreateMock.mockResolvedValue({
+      output_text: JSON.stringify({
+        name: 'A',
+        mood: 'Calm',
+        description: 'd',
+        transcript: 't',
+      }),
+    });
+    const svc = await createService();
+    const draft = await svc.draftFromAudio(audioFile());
+    expect(draft.surroundings).toBe('');
+  });
+
   it('clamps invalid mood to Calm when model JSON omits whitelist', async () => {
     responsesCreateMock.mockResolvedValue({
       output_text: JSON.stringify({
         name: 'X',
         mood: 'JoyfulBurst',
         description: 'd',
+        surroundings: '',
         transcript: 't',
       }),
     });

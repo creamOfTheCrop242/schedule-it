@@ -13,6 +13,8 @@ export interface VoiceLogDraftDto {
   name: string;
   mood: string;
   description: string;
+  /** Setting / context (place, people, environment, sensory detail) inferred from speech. */
+  surroundings: string;
   transcript: string;
 }
 
@@ -20,7 +22,7 @@ const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
 
 /**
  * Whisper transcribes arbitrary browser uploads (WebM/opus, etc.).
- * Responses API structures title/mood/description from transcript (wording-based mood).
+ * Responses API structures title/mood/description/surroundings from transcript (wording-based mood).
  */
 @Injectable()
 export class LogVoiceService {
@@ -89,6 +91,7 @@ export class LogVoiceService {
       `Choose mood as exactly one label from this list (match spelling): ${moodList}. Infer mood from wording and expressed emotion in that transcript.`,
       'name: short actionable log title (max ~80 chars).',
       'description: a concise journal paragraph capturing what they said; may lightly clean filler words.',
+      'surroundings: brief note on setting or context only (where they were, who was around, weather, sensory detail). Infer from explicit clues or reasonable implication; use empty string if nothing can be inferred. Do not duplicate the full narrative—that belongs in description.',
       `transcript: repeat the supplied transcript verbatim (do not invent speech).`,
     ].join(' ');
 
@@ -112,9 +115,16 @@ export class LogVoiceService {
                 name: { type: 'string' },
                 mood: { type: 'string', enum: [...LOG_MOOD_PRESETS] },
                 description: { type: 'string' },
+                surroundings: { type: 'string' },
                 transcript: { type: 'string' },
               },
-              required: ['name', 'mood', 'description', 'transcript'],
+              required: [
+                'name',
+                'mood',
+                'description',
+                'surroundings',
+                'transcript',
+              ],
             },
           },
         },
@@ -138,6 +148,11 @@ export class LogVoiceService {
         mood = 'Calm';
       }
 
+      const surroundings =
+        typeof parsed.surroundings === 'string'
+          ? parsed.surroundings.trim()
+          : '';
+
       return {
         name:
           typeof parsed.name === 'string' && parsed.name.trim().length > 0
@@ -148,6 +163,7 @@ export class LogVoiceService {
           typeof parsed.description === 'string' && parsed.description.trim()
             ? parsed.description.trim()
             : transcript,
+        surroundings,
         transcript:
           typeof parsed.transcript === 'string' && parsed.transcript.trim()
             ? parsed.transcript.trim()
