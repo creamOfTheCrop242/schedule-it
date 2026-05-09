@@ -3,6 +3,9 @@ import { Log } from 'src/logs/entities/log.entity';
 /** Max characters per textual field when building the model input. */
 export const LOG_EXCERPT_TRUNCATION = 500;
 
+/** Cap notes per log so large journals do not blow up latency and token count. */
+export const LOG_AI_SUMMARY_MAX_NOTES_PER_LOG = 8;
+
 export function clipLogExcerpt(value: string | null | undefined): string {
   if (value === null || value === undefined) {
     return '';
@@ -66,8 +69,14 @@ export function serializeLogsForModel(
     const notes = log.notes ?? [];
     if (notes.length > 0) {
       lines.push('Notes:');
-      for (const note of notes) {
+      const capped = notes.slice(0, LOG_AI_SUMMARY_MAX_NOTES_PER_LOG);
+      for (const note of capped) {
         lines.push(`- ${clipLogExcerpt(note?.content)}`);
+      }
+      if (notes.length > capped.length) {
+        lines.push(
+          `(+${notes.length - capped.length} more notes omitted for length)`,
+        );
       }
     }
 
