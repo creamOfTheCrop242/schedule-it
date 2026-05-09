@@ -6,10 +6,20 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import OpenAI, { APIConnectionTimeoutError } from 'openai';
+import type { Reasoning } from 'openai/resources/shared';
 
 import { LogService } from 'src/logs/services/log/log.service';
 import { serializeLogsForModel } from 'src/logs/utils/log-excerpts-for-model';
+
+const REASONING_EFFORTS: ReadonlySet<string> = new Set([
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+]);
 
 @Injectable()
 export class LogInsightsService {
@@ -61,11 +71,17 @@ export class LogInsightsService {
     const logPayload = serializeLogsForModel(logs);
     const client = new OpenAI({ apiKey });
 
+    const reasoning = LogInsightsService.reasoningOption(this.configService);
+    const maxOutputTokens =
+      LogInsightsService.maxOutputTokensForSummary(this.configService);
+
     try {
       const response = await client.responses.create({
         model,
         instructions: LogInsightsService.instructions(),
         input: logPayload,
+        max_output_tokens: maxOutputTokens,
+        ...(reasoning ? { reasoning } : {}),
       });
       const text = response.output_text?.trim();
       if (!text) {
@@ -79,9 +95,49 @@ export class LogInsightsService {
       if (err instanceof ServiceUnavailableException) {
         throw err;
       }
+      if (err instanceof APIConnectionTimeoutError) {
+        throw new ServiceUnavailableException(
+          'The AI summary request timed out talking to OpenAI. Try narrowing filters (date, search) or retry in a moment.',
+        );
+      }
       const msg = err instanceof Error ? err.message : 'OpenAI request failed';
+      if (/timed?\s*out|timeout/i.test(msg)) {
+        throw new ServiceUnavailableException(
+          'The AI summary took too long. Try fewer logs in view (narrow filters) or retry shortly.',
+        );
+      }
       throw new BadGatewayException(msg);
     }
+  }
+
+  /**
+   * Lower reasoning effort speeds up gpt-5.x style models (default would stay
+   * at medium for many models). Set OPENAI_LOG_SUMMARY_REASONING_EFFORT=omit to
+   * omit the field for models that reject `reasoning`.
+   */
+  private static reasoningOption(config: ConfigService): Reasoning | undefined {
+    const raw = config
+      .get<string>('OPENAI_LOG_SUMMARY_REASONING_EFFORT')
+      ?.trim()
+      .toLowerCase();
+    if (raw === '' || raw === 'omit' || raw === 'off') {
+      return undefined;
+    }
+    const effort = (raw ?? 'low').toLowerCase();
+    if (!REASONING_EFFORTS.has(effort)) {
+      return { effort: 'low' };
+    }
+    return { effort: effort as NonNullable<Reasoning['effort']> };
+  }
+
+  /** Caps completion length to keep latency predictable (default 1200). */
+  private static maxOutputTokensForSummary(config: ConfigService): number {
+    const raw = config.get<string>('OPENAI_LOG_SUMMARY_MAX_OUTPUT_TOKENS')?.trim();
+    const n = raw !== undefined && raw !== '' ? Number.parseInt(raw, 10) : 1200;
+    if (!Number.isFinite(n)) {
+      return 1200;
+    }
+    return Math.min(4096, Math.max(256, Math.floor(n)));
   }
 
   private static assertAiSummaryCooldown(accountId: string): void {
