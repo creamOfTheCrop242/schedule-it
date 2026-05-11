@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountModule } from 'src/accounts/account.module';
 import { LogController } from './controllers/logs/logs.controller';
 import { LogSummaryInternalController } from './controllers/log-summary-internal/log-summary-internal.controller';
+import { InternalAdminController } from './controllers/internal-admin/internal-admin.controller';
 import { Log } from './entities/log.entity';
 import { LogPeriodSummary } from './entities/log-period-summary.entity';
 import { LogInsightsService } from './services/log-insights/log-insights.service';
@@ -16,16 +17,17 @@ import { JwtService } from '@nestjs/jwt';
 import { GoalsModule } from 'src/goals/goals.module';
 import { HabitsModule } from 'src/habits/habits.module';
 import { PersonalGoalsModule } from 'src/personal-goals/personal-goals.module';
+import { Account } from 'src/accounts/entities/account.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Log, Task, LogPeriodSummary]),
+    TypeOrmModule.forFeature([Log, Task, LogPeriodSummary, Account]),
     AccountModule,
     GoalsModule,
     HabitsModule,
     PersonalGoalsModule,
   ],
-  controllers: [LogController, LogSummaryInternalController],
+  controllers: [LogController, LogSummaryInternalController, InternalAdminController],
   providers: [
     LogService,
     LogInsightsService,
