@@ -551,7 +551,12 @@ async function bootstrap() {
   const corsOptions = {
     origin: ['http://localhost:4200', 'https://app.theguidelog.com'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'X-Dev-Onboarding-Reset',
+    ],
     credentials: true,
     optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
   };
