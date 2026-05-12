@@ -4,6 +4,7 @@ import { AccountModule } from 'src/accounts/account.module';
 import { LogController } from './controllers/logs/logs.controller';
 import { LogSummaryInternalController } from './controllers/log-summary-internal/log-summary-internal.controller';
 import { InternalAdminController } from './controllers/internal-admin/internal-admin.controller';
+import { DevOnboardingSandboxController } from './controllers/dev-onboarding-sandbox/dev-onboarding-sandbox.controller';
 import { Log } from './entities/log.entity';
 import { LogPeriodSummary } from './entities/log-period-summary.entity';
 import { LogInsightsService } from './services/log-insights/log-insights.service';
@@ -27,7 +28,12 @@ import { Account } from 'src/accounts/entities/account.entity';
     HabitsModule,
     PersonalGoalsModule,
   ],
-  controllers: [LogController, LogSummaryInternalController, InternalAdminController],
+  controllers: [
+    LogController,
+    LogSummaryInternalController,
+    InternalAdminController,
+    DevOnboardingSandboxController,
+  ],
   providers: [
     LogService,
     LogInsightsService,
