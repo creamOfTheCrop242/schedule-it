@@ -24,6 +24,7 @@ import { LocalAuthGuard } from 'src/auth/guards/local.guard';
 import { JWT_ACCESS_TOKEN_TTL_SECONDS } from 'src/auth/constants/constants';
 import { AuthService } from 'src/auth/services/auth/auth.service';
 import { MailService } from 'src/mail/mail.service';
+import { NativeGoogleGuard } from 'src/auth/guards/native-google.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -117,6 +118,25 @@ export class AuthController {
            <script>location.replace(${JSON.stringify(frontend)});</script>
          </body></html>`,
       );
+  }
+
+  /** Starts Google sign-in for the native client. */
+  @Get('google/native')
+  @UseGuards(NativeGoogleGuard)
+  async nativeGoogleAuth() {}
+
+  /** Completes native Google sign-in and hands the JWT to the app's custom URL scheme. */
+  @Get('google/native/callback')
+  @UseGuards(NativeGoogleGuard)
+  async nativeGoogleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const token = req.user as string;
+    const state = typeof req.query.state === 'string' ? req.query.state : '';
+    const redirect =
+      this.configService.get<string>('GOOGLE_NATIVE_REDIRECT_URI') ??
+      'guidelog://oauth/callback';
+    const separator = redirect.includes('?') ? '&' : '?';
+    const location = `${redirect}${separator}token=${encodeURIComponent(token)}&state=${encodeURIComponent(state)}`;
+    return res.redirect(location);
   }
 
   @Get('facebook')

@@ -16,6 +16,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmailVerification } from './entities/email-verification.entity';
 import { MailService } from 'src/mail/mail.service';
 import { FacebookStrategy } from './strategies/facebook.strategy';
+import { NativeGoogleGuard } from './guards/native-google.guard';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { FacebookStrategy } from './strategies/facebook.strategy';
     GoogleStrategy,
     FacebookStrategy,
     MailService,
+    NativeGoogleGuard,
   ],
 })
 export class AuthModule {}
